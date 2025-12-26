@@ -55,16 +55,17 @@ class Generator(nn.Module):
 
         return self.output_layer(x)
     
-    class Discriminator(nn.Module):
-        def __init__(
-                self,
-                feature_dim: int,
-                num_hidden_layers: int,
-                hidden_dims,
-                hidden_activation = nn.LeakyReLU,
-                use_conditional: bool = False,
-                 conditional_dims: int = 0
-                 ):
+class Discriminator(nn.Module):
+    def __init__(
+            self,
+            feature_dim: int,
+            num_hidden_layers: int,
+            hidden_dims : list | tuple,
+            hidden_activation = nn.LeakyReLU,
+            use_conditional: bool = False,
+            use_sigmoid: bool = False,
+            conditional_dims: int = 0
+            ):
             super().__init__()
 
             if isinstance(hidden_dims, tuple):
@@ -93,11 +94,12 @@ class Generator(nn.Module):
                 self.hidden_layers.append(nn.Linear(*hidden_dims[i]))
 
             self.output_layer = nn.Linear(hidden_dims[-1][1], 1)
-
-        def forward(self, x, c=None):
-            if c is not None:
-                x = torch.cat([x, c], dim=1)
-            x = self.activation(self.input_layer(x))
-            for layer in self.hidden_layers:
-                x = self.activation(layer(x))
-            return torch.sigmoid(self.output_layer(x))
+            self.out_activation = nn.Sigmoid() if use_sigmoid else nn.Identity()
+    def forward(self, x, c=None):
+        if c is not None:
+            x = torch.cat([x, c], dim=1)
+        x = self.activation(self.input_layer(x))
+        for layer in self.hidden_layers:
+            x = self.activation(layer(x))
+        x = self.output_layer(x)
+        return self.out_activation(x)
