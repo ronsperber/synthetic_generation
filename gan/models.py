@@ -8,7 +8,7 @@ class Generator(nn.Module):
         num_hidden_layers: int,
         out_dim: int,
         hidden_dims,
-        hidden_activation,
+        hidden_activation = nn.LeakyReLU,
         use_conditional: bool = False,
         conditional_dims: int = 0
     ):
