@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import numpy as np
 from torch.utils.data import DataLoader
 from .models import Generator, Discriminator
 from .utils import make_dataloader, gradient_penalty
@@ -38,6 +39,8 @@ def train_gan(
     opt_d = torch.optim.Adam(D.parameters(), lr=lr_D, betas=(0.5,0.999))
 
     for epoch in range(1, epochs + 1):
+        epoch_d_losses = []
+        epoch_g_losses = []
         for batch in dataloader:
             if len(batch) == 1:
                 x_real = batch[0].to(device)
@@ -62,7 +65,7 @@ def train_gan(
                 criterion(d_real, torch.ones_like(d_real)) +
                 criterion(d_fake, torch.zeros_like(d_fake))
             )
-
+            epoch_d_losses.append(loss_d.item())
             opt_d.zero_grad()
             loss_d.backward()
             opt_d.step()
@@ -75,13 +78,13 @@ def train_gan(
             d_fake = D(x_fake, c_batch)
 
             loss_g = criterion(d_fake, torch.ones_like(d_fake))
-
+            epoch_g_losses.append(loss_g.item())
             opt_g.zero_grad()
             loss_g.backward()
             opt_g.step()
 
         if epoch % 10 == 0:
-            print(f"Epoch {epoch}/{epochs} | D: {loss_d.item():.4f} | G: {loss_g.item():.4f}")
+            print(f"Epoch {epoch}/{epochs} | D: {np.mean(epoch_d_losses) :.4f} | G: {np.mean(epoch_g_losses):.4f}")
 
 def train_wgan_gp(
     X: torch.Tensor | DataLoader,
@@ -114,6 +117,8 @@ def train_wgan_gp(
     opt_d = torch.optim.Adam(D.parameters(), lr=lr_D, betas=(0.0, 0.9))
 
     for epoch in range(1, epochs + 1):
+        epoch_d_losses = []
+        epoch_g_losses = []
         for batch in dataloader:
             if len(batch) == 1:
                 x_real = batch[0].to(device)
@@ -138,7 +143,7 @@ def train_wgan_gp(
                 gp = gradient_penalty(D, x_real, x_fake, c_batch, lambda_gp)
 
                 loss_d = d_fake - d_real + gp
-
+                epoch_d_losses.append(loss_d.item())
                 opt_d.zero_grad()
                 loss_d.backward()
                 opt_d.step()
@@ -150,7 +155,7 @@ def train_wgan_gp(
             x_fake = G(z, c_batch)
 
             loss_g = -D(x_fake, c_batch).mean()
-
+            epoch_g_losses.append(loss_g.item())
             opt_g.zero_grad()
             loss_g.backward()
             opt_g.step()
@@ -158,6 +163,6 @@ def train_wgan_gp(
         if epoch % 10 == 0:
             print(
                 f"Epoch {epoch}/{epochs} | "
-                f"D loss: {loss_d.item():.4f} | "
-                f"G loss: {loss_g.item():.4f}"
+                f"D loss: {np.mean(epoch_d_losses):.4f} | "
+                f"G loss: {np.mean(epoch_g_losses):.4f}"
             )
