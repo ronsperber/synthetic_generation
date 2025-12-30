@@ -56,6 +56,20 @@ class Generator(nn.Module):
 
         return self.output_activation(self.output_layer(x))
     
+    def generate(
+        self,
+        num_samples: int,
+        c: torch.Tensor | None = None
+    ):
+        device = next(self.parameters()).device
+        if c is not None:
+            if c.shape[0] != num_samples:
+                raise ValueError("Number of samples must equal length of conditional input")
+            c = c.to(device)
+        z = torch.randn(num_samples, self.noise_dim, device=device)
+        return self.forward(z, c)
+
+    
 class Discriminator(nn.Module):
     def __init__(
             self,

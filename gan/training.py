@@ -55,8 +55,7 @@ def train_gan(
             # ====================
             # Train Discriminator
             # ====================
-            z = torch.randn(B, G.noise_dim, device=device)
-            x_fake = G(z, c_batch).detach()
+            x_fake = G.generate(B, c_batch)
 
             d_real = D(x_real, c_batch)
             d_fake = D(x_fake, c_batch)
@@ -73,8 +72,7 @@ def train_gan(
             # ====================
             # Train Generator
             # ====================
-            z = torch.randn(B, G.noise_dim, device=device)
-            x_fake = G(z, c_batch)
+            x_fake = G.generate(B, c_batch)
             d_fake = D(x_fake, c_batch)
 
             loss_g = criterion(d_fake, torch.ones_like(d_fake))
@@ -128,15 +126,13 @@ def train_wgan_gp(
                 x_real = x_real.to(device)
                 c_batch = c_batch.to(device)
 
-            batch_size = x_real.size(0)
+            B = x_real.size(0)
 
             # ---------------------
             # Train critic
             # ---------------------
             for _ in range(n_critic):
-                z = torch.randn(batch_size, G.noise_dim, device=device)
-                x_fake = G(z, c_batch).detach()
-
+                x_fake = G.generate(B, c_batch)
                 d_real = D(x_real, c_batch).mean()
                 d_fake = D(x_fake, c_batch).mean()
 
@@ -151,9 +147,7 @@ def train_wgan_gp(
             # ---------------------
             # Train generator
             # ---------------------
-            z = torch.randn(batch_size, G.noise_dim, device=device)
-            x_fake = G(z, c_batch)
-
+            x_fake = G.generate(B, c_batch)
             loss_g = -D(x_fake, c_batch).mean()
             epoch_g_losses.append(loss_g.item())
             opt_g.zero_grad()
