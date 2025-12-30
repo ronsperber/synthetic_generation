@@ -1,14 +1,9 @@
 import torch
 import torch.nn as nn
-from torch.utils.data import TensorDataset, DataLoader
+from torch.utils.data import DataLoader
 from .models import Generator, Discriminator
+from .utils import make_dataloader, gradient_penalty
 
-def make_dataloader(X, c=None, batch_size=64, shuffle=True):
-    if c is not None:
-        dataset = TensorDataset(X, c)
-    else:
-        dataset = TensorDataset(X)
-    return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
 
 def train_gan(
     X: torch.Tensor | DataLoader,
@@ -87,3 +82,82 @@ def train_gan(
 
         if epoch % 10 == 0:
             print(f"Epoch {epoch}/{epochs} | D: {loss_d.item():.4f} | G: {loss_g.item():.4f}")
+
+def train_wgan_gp(
+    X: torch.Tensor | DataLoader,
+    G: Generator,
+    D: Discriminator,
+    lr_G=1e-4,
+    lr_D=1e-4,
+    batch_size=64,
+    epochs=200,
+    c: torch.Tensor | None = None,
+    n_critic=5,
+    lambda_gp=10.0,
+):
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    G.to(device)
+    D.to(device)
+
+    dataloader = (
+        X if isinstance(X, DataLoader)
+        else make_dataloader(X, c, batch_size=batch_size)
+    )
+
+    # sanity checks
+    if G.output_dim != D.feature_dim:
+        raise ValueError("Generator / Critic dimension mismatch")
+    if G.conditional_dim != D.conditional_dim:
+        raise ValueError("Conditional dimension mismatch")
+
+    opt_g = torch.optim.Adam(G.parameters(), lr=lr_G, betas=(0.0, 0.9))
+    opt_d = torch.optim.Adam(D.parameters(), lr=lr_D, betas=(0.0, 0.9))
+
+    for epoch in range(1, epochs + 1):
+        for batch in dataloader:
+            if len(batch) == 1:
+                x_real = batch[0].to(device)
+                c_batch = None
+            else:
+                x_real, c_batch = batch
+                x_real = x_real.to(device)
+                c_batch = c_batch.to(device)
+
+            batch_size = x_real.size(0)
+
+            # ---------------------
+            # Train critic
+            # ---------------------
+            for _ in range(n_critic):
+                z = torch.randn(batch_size, G.noise_dim, device=device)
+                x_fake = G(z, c_batch).detach()
+
+                d_real = D(x_real, c_batch).mean()
+                d_fake = D(x_fake, c_batch).mean()
+
+                gp = gradient_penalty(D, x_real, x_fake, c_batch, lambda_gp)
+
+                loss_d = d_fake - d_real + gp
+
+                opt_d.zero_grad()
+                loss_d.backward()
+                opt_d.step()
+
+            # ---------------------
+            # Train generator
+            # ---------------------
+            z = torch.randn(batch_size, G.noise_dim, device=device)
+            x_fake = G(z, c_batch)
+
+            loss_g = -D(x_fake, c_batch).mean()
+
+            opt_g.zero_grad()
+            loss_g.backward()
+            opt_g.step()
+
+        if epoch % 10 == 0:
+            print(
+                f"Epoch {epoch}/{epochs} | "
+                f"D loss: {loss_d.item():.4f} | "
+                f"G loss: {loss_g.item():.4f}"
+            )

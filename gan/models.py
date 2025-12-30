@@ -9,6 +9,7 @@ class Generator(nn.Module):
         out_dim: int,
         hidden_dims,
         hidden_activation = nn.LeakyReLU,
+        output_activation = nn.Identity,
         use_conditional: bool = False,
         conditional_dim: int = 0
     ):
@@ -30,7 +31,7 @@ class Generator(nn.Module):
         self.output_dim = out_dim
         self.activation = hidden_activation()
         self.conditional_dim = conditional_dim if use_conditional else 0
-
+        self.output_activation = output_activation()
         self.input_layer = nn.Linear(
             self.noise_dim + self.conditional_dim,
             hidden_dims[0][0]
@@ -53,7 +54,7 @@ class Generator(nn.Module):
         for layer in self.hidden_layers:
             x = self.activation(layer(x))
 
-        return self.output_layer(x)
+        return self.output_activation(self.output_layer(x))
     
 class Discriminator(nn.Module):
     def __init__(
