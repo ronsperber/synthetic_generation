@@ -28,6 +28,13 @@ This is not an image-focused GAN framework.
   - `make_dataloader()` for wrapping tensors into a `DataLoader`
   - `gradient_penalty()` for WGAN-GP
 
+- `Notebooks`   
+  Sample notebooks illustrating
+  - Vanilla GAN
+  - Conditional GAN
+  - WGAN-GP
+  - WGAN-GP with conditional
+
 ---
 
 ## Installation
