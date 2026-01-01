@@ -10,16 +10,17 @@ from torch.utils.data import DataLoader
 from .models import Generator, Discriminator
 from .utils import make_dataloader, gradient_penalty
 
+
 def train_gan(
     X: torch.Tensor | DataLoader,
     G: Generator,
     D: Discriminator,
     lr_G: float = 1e-4,
     lr_D: float = 1e-4,
-    criterion: Callable =nn.BCEWithLogitsLoss(),
+    criterion: Callable = nn.BCEWithLogitsLoss(),
     batch_size: int = 64,
     epochs: int = 200,
-    c: torch.Tensor | None = None
+    c: torch.Tensor | None = None,
 ):
     """
     Function to train a GAN
@@ -48,23 +49,20 @@ def train_gan(
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     G.to(device)
     D.to(device)
-    # if the data is not already in a DataLoader, put it in one 
+    # if the data is not already in a DataLoader, put it in one
     dataloader = (
-        X if isinstance(X, DataLoader)
-        else make_dataloader(X, c, batch_size=batch_size)
+        X if isinstance(X, DataLoader) else make_dataloader(X, c, batch_size=batch_size)
     )
 
     # verify dimensions that mus match
     if G.output_dim != D.feature_dim:
-        raise ValueError(
-            f"G outputs {G.output_dim}, D expects {D.feature_dim}"
-        )
+        raise ValueError(f"G outputs {G.output_dim}, D expects {D.feature_dim}")
 
     if G.conditional_dim != D.conditional_dim:
         raise ValueError("Conditional dimensions must match")
     # set the opitmizers
-    opt_g = torch.optim.Adam(G.parameters(), lr=lr_G, betas=(0.5,0.999))
-    opt_d = torch.optim.Adam(D.parameters(), lr=lr_D, betas=(0.5,0.999))
+    opt_g = torch.optim.Adam(G.parameters(), lr=lr_G, betas=(0.5, 0.999))
+    opt_d = torch.optim.Adam(D.parameters(), lr=lr_D, betas=(0.5, 0.999))
 
     for epoch in range(1, epochs + 1):
         epoch_d_losses = []
@@ -91,9 +89,8 @@ def train_gan(
             d_real = D(x_real, c_batch)
             d_fake = D(x_fake, c_batch)
 
-            loss_d = (
-                criterion(d_real, torch.ones_like(d_real)) +
-                criterion(d_fake, torch.zeros_like(d_fake))
+            loss_d = criterion(d_real, torch.ones_like(d_real)) + criterion(
+                d_fake, torch.zeros_like(d_fake)
             )
             epoch_d_losses.append(loss_d.item())
             opt_d.zero_grad()
@@ -114,7 +111,10 @@ def train_gan(
             opt_g.step()
 
         if epoch % 10 == 0:
-            print(f"Epoch {epoch}/{epochs} | D: {np.mean(epoch_d_losses) :.4f} | G: {np.mean(epoch_g_losses):.4f}")
+            print(
+                f"Epoch {epoch}/{epochs} | D: {np.mean(epoch_d_losses):.4f} | G: {np.mean(epoch_g_losses):.4f}"
+            )
+
 
 def train_wgan_gp(
     X: torch.Tensor | DataLoader,
@@ -125,8 +125,8 @@ def train_wgan_gp(
     batch_size: int = 64,
     epochs: int = 200,
     c: torch.Tensor | None = None,
-    n_critic:int = 5,
-    lambda_gp:float = 10.0,
+    n_critic: int = 5,
+    lambda_gp: float = 10.0,
 ):
     """
     Function to train a WGAN-GP
@@ -158,8 +158,7 @@ def train_wgan_gp(
     D.to(device)
     # if the data is not already in a DataLoader, put it in one
     dataloader = (
-        X if isinstance(X, DataLoader)
-        else make_dataloader(X, c, batch_size=batch_size)
+        X if isinstance(X, DataLoader) else make_dataloader(X, c, batch_size=batch_size)
     )
 
     # validate dimensions
@@ -189,7 +188,7 @@ def train_wgan_gp(
             # Train critic
             # ---------------------
             for _ in range(n_critic):
-                # generate fake data and compute the loss function 
+                # generate fake data and compute the loss function
                 x_fake = G.generate(B, c_batch)
                 d_real = D(x_real, c_batch).mean()
                 d_fake = D(x_fake, c_batch).mean()

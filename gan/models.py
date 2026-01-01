@@ -1,21 +1,24 @@
 """
-model with classes for Generator and Discriminator (or Critic) 
+model with classes for Generator and Discriminator (or Critic)
 for a GAN/WGAN-GP
 """
+
 from typing import Sequence, TypeAlias
 from collections.abc import Callable
 import torch
 import torch.nn as nn
 
-#types used for the classes
-LayerDims = tuple[int,int]
+# types used for the classes
+LayerDims = tuple[int, int]
 HiddenDims: TypeAlias = LayerDims | Sequence[LayerDims]
-ActivationFactory: TypeAlias = Callable[[],nn.Module]
+ActivationFactory: TypeAlias = Callable[[], nn.Module]
+
 
 class Generator(nn.Module):
     """
     class for Generator in a GAN or WGAN
     """
+
     def __init__(
         self,
         noise_dim: int,
@@ -25,7 +28,7 @@ class Generator(nn.Module):
         hidden_activation: ActivationFactory = nn.LeakyReLU,
         output_activation: ActivationFactory = nn.Identity,
         use_conditional: bool = False,
-        conditional_dim: int = 0
+        conditional_dim: int = 0,
     ):
         """
         initialization of Generator class
@@ -55,14 +58,16 @@ class Generator(nn.Module):
             hidden_dims = [hidden_dims] * num_hidden_layers
         # validate length of hidden_dims
         if len(hidden_dims) != num_hidden_layers:
-            raise ValueError("Number of hidden layers and length of hidden_dims must be equal")
+            raise ValueError(
+                "Number of hidden layers and length of hidden_dims must be equal"
+            )
         # validate that output dimension of a layer matches input dimension of next
         for i in range(len(hidden_dims) - 1):
             if hidden_dims[i][1] != hidden_dims[i + 1][0]:
                 raise ValueError(
                     f"hidden_dims[{i}][1] ({hidden_dims[i][1]}) "
-                    f"!= hidden_dims[{i+1}][0] ({hidden_dims[i+1][0]})"
-                    )
+                    f"!= hidden_dims[{i + 1}][0] ({hidden_dims[i + 1][0]})"
+                )
 
         self.noise_dim = noise_dim
         self.output_dim = out_dim
@@ -70,8 +75,7 @@ class Generator(nn.Module):
         self.conditional_dim = conditional_dim if use_conditional else 0
         self.output_activation = output_activation()
         self.input_layer = nn.Linear(
-            self.noise_dim + self.conditional_dim,
-            hidden_dims[0][0]
+            self.noise_dim + self.conditional_dim, hidden_dims[0][0]
         )
 
         self.hidden_layers = nn.ModuleList()
@@ -80,7 +84,7 @@ class Generator(nn.Module):
 
         self.output_layer = nn.Linear(hidden_dims[-1][1], self.output_dim)
 
-    def forward(self, z: torch.Tensor, c: torch.Tensor | None=None):
+    def forward(self, z: torch.Tensor, c: torch.Tensor | None = None):
         """
         forward method for the network
         Parameters
@@ -101,12 +105,8 @@ class Generator(nn.Module):
             x = self.activation(layer(x))
 
         return self.output_activation(self.output_layer(x))
-    
-    def generate(
-        self,
-        num_samples: int,
-        c: torch.Tensor | None = None
-    ):
+
+    def generate(self, num_samples: int, c: torch.Tensor | None = None):
         """
         method to generate a 'fake' data set
         Parameters
@@ -125,81 +125,86 @@ class Generator(nn.Module):
         # matches the number of samples
         if c is not None:
             if c.shape[0] != num_samples:
-                raise ValueError("Number of samples must equal length of conditional input")
+                raise ValueError(
+                    "Number of samples must equal length of conditional input"
+                )
             c = c.to(device)
         # generate random noise and output data
         z = torch.randn(num_samples, self.noise_dim, device=device)
         return self.forward(z, c)
 
-    
+
 class Discriminator(nn.Module):
     """
-    class for a Discriminator or Critic for a 
+    class for a Discriminator or Critic for a
     GAN / WGAN respectively
     """
+
     def __init__(
-            self,
-            feature_dim: int,
-            num_hidden_layers: int,
-            hidden_dims : HiddenDims,
-            hidden_activation: ActivationFactory = nn.LeakyReLU,
-            use_conditional: bool = False,
-            use_sigmoid: bool = False,
-            conditional_dim: int = 0
-            ):
-            """
-            Initialization for class
-            Parameters
-            ----------
-            feature_dim : int
-                number of features in the data
-            num_hidden_layers : int
-                number of linear layers between input and output layers
-            hidden_dims : HiddenDims
-                    either a single (in_dim, out_dim) tuple reused for all hidden layers
-                    or a sequence of such tuples specifying each layer explicitly
-            hidden_activation : ActivationFactory
-                activation function to be used on all layers other than output layer
-            use_conditional : bool
-                Boolean on whether or not a conditional is being used
-            use_sigmoid : bool
-                whether or not a final sigmoid activation is to be applied. This should 
-                always be False for a WGAN
-            condtional_dim : int
-                when use_conditional is True, the dimension of the conditional
-            """
-            super().__init__()
+        self,
+        feature_dim: int,
+        num_hidden_layers: int,
+        hidden_dims: HiddenDims,
+        hidden_activation: ActivationFactory = nn.LeakyReLU,
+        use_conditional: bool = False,
+        use_sigmoid: bool = False,
+        conditional_dim: int = 0,
+    ):
+        """
+        Initialization for class
+        Parameters
+        ----------
+        feature_dim : int
+            number of features in the data
+        num_hidden_layers : int
+            number of linear layers between input and output layers
+        hidden_dims : HiddenDims
+                either a single (in_dim, out_dim) tuple reused for all hidden layers
+                or a sequence of such tuples specifying each layer explicitly
+        hidden_activation : ActivationFactory
+            activation function to be used on all layers other than output layer
+        use_conditional : bool
+            Boolean on whether or not a conditional is being used
+        use_sigmoid : bool
+            whether or not a final sigmoid activation is to be applied. This should
+            always be False for a WGAN
+        condtional_dim : int
+            when use_conditional is True, the dimension of the conditional
+        """
+        super().__init__()
 
-            if isinstance(hidden_dims, tuple):
-                hidden_dims = [hidden_dims] * num_hidden_layers
-            # valitdate that we have the right number of hidden_dims
-            if len(hidden_dims) != num_hidden_layers:
-                raise ValueError("Number of hidden layers and length of hidden_dims must be equal")
-            # validate that the output of each layer has same dimension as the input of the 
-            # next layer
-            for i in range(len(hidden_dims) - 1):
-                if hidden_dims[i][1] != hidden_dims[i + 1][0]:
-                    raise ValueError(
+        if isinstance(hidden_dims, tuple):
+            hidden_dims = [hidden_dims] * num_hidden_layers
+        # valitdate that we have the right number of hidden_dims
+        if len(hidden_dims) != num_hidden_layers:
+            raise ValueError(
+                "Number of hidden layers and length of hidden_dims must be equal"
+            )
+        # validate that the output of each layer has same dimension as the input of the
+        # next layer
+        for i in range(len(hidden_dims) - 1):
+            if hidden_dims[i][1] != hidden_dims[i + 1][0]:
+                raise ValueError(
                     f"hidden_dims[{i}][1] ({hidden_dims[i][1]}) "
-                    f"!= hidden_dims[{i+1}][0] ({hidden_dims[i+1][0]})"
-                    )
+                    f"!= hidden_dims[{i + 1}][0] ({hidden_dims[i + 1][0]})"
+                )
 
-            self.feature_dim = feature_dim
-            self.activation = hidden_activation()
-            self.conditional_dim = conditional_dim if use_conditional else 0
+        self.feature_dim = feature_dim
+        self.activation = hidden_activation()
+        self.conditional_dim = conditional_dim if use_conditional else 0
 
-            self.input_layer = nn.Linear(
-                self.feature_dim + self.conditional_dim,
-                hidden_dims[0][0]
+        self.input_layer = nn.Linear(
+            self.feature_dim + self.conditional_dim, hidden_dims[0][0]
         )
 
-            self.hidden_layers = nn.ModuleList()
-            for i in range(num_hidden_layers):
-                self.hidden_layers.append(nn.Linear(*hidden_dims[i]))
+        self.hidden_layers = nn.ModuleList()
+        for i in range(num_hidden_layers):
+            self.hidden_layers.append(nn.Linear(*hidden_dims[i]))
 
-            self.output_layer = nn.Linear(hidden_dims[-1][1], 1)
-            self.out_activation = nn.Sigmoid() if use_sigmoid else nn.Identity()
-    def forward(self, x: torch.Tensor, c: torch.Tensor | None =None):
+        self.output_layer = nn.Linear(hidden_dims[-1][1], 1)
+        self.out_activation = nn.Sigmoid() if use_sigmoid else nn.Identity()
+
+    def forward(self, x: torch.Tensor, c: torch.Tensor | None = None):
         """
         forward method for the network
         Parameters

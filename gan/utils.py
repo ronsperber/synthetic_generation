@@ -1,16 +1,18 @@
 """
 module of helper functions for this project
 """
+
 import torch
 from torch.utils.data import TensorDataset, DataLoader
-from .models import  Discriminator
+from .models import Discriminator
+
 
 def make_dataloader(
-        X: torch.Tensor,
-        c: torch.Tensor | None = None, 
-        batch_size:int = 64,
-        shuffle: bool = True
- ):
+    X: torch.Tensor,
+    c: torch.Tensor | None = None,
+    batch_size: int = 64,
+    shuffle: bool = True,
+):
     """
     function to turn data into a DataLoader
     Parameters
@@ -33,13 +35,14 @@ def make_dataloader(
         dataset = TensorDataset(X)
     return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
 
+
 def gradient_penalty(
-        D: Discriminator,
-        x_real: torch.Tensor,
-        x_fake: torch.Tensor,
-        c: torch.Tensor | None = None,
-        lambda_gp: float=10.0
-        ):
+    D: Discriminator,
+    x_real: torch.Tensor,
+    x_fake: torch.Tensor,
+    c: torch.Tensor | None = None,
+    lambda_gp: float = 10.0,
+):
     """
     function to compute gradient penalty for WGAN-GP
     Parameters
