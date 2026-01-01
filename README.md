@@ -83,8 +83,10 @@ X_fake = G.generate(10000)
 # Now a conditional GAN on the same data
 # one hot encode the labels
 one_hot = torch.nn.functional.one_hot(torch.tensor(labels), num_classes=3).float()
+# assign each sample its cluster center
+centers_per_sample = torch.tensor(centers)[labels]
 # combine the centers with encoded labels
-c = torch.cat([torch.tensor(centers), one_hot], dim=1)
+c = torch.cat([torch.tensor(center_per_sample), one_hot], dim=1)
 # get the number of conditional dimensions
 conditional_dim = c.shape[1]
 
