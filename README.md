@@ -86,7 +86,11 @@ train_gan(
 
 # create a fake data set
 X_fake = G.generate(10000)
+```
+### Training a conditional GAN
+The data is as we saa in the previous example (`X, centers,labels`)
 
+```python
 # Now a conditional GAN on the same data
 # one hot encode the labels
 one_hot = torch.nn.functional.one_hot(torch.tensor(labels), num_classes=3).float()
