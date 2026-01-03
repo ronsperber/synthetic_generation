@@ -7,6 +7,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 from torch.utils.data import DataLoader
+from tqdm.auto import tqdm
 from .models import Generator, Discriminator
 from .utils import make_dataloader, gradient_penalty
 
@@ -63,8 +64,8 @@ def train_gan(
     # set the opitmizers
     opt_g = torch.optim.Adam(G.parameters(), lr=lr_G, betas=(0.5, 0.999))
     opt_d = torch.optim.Adam(D.parameters(), lr=lr_D, betas=(0.5, 0.999))
-
-    for epoch in range(1, epochs + 1):
+    pbar = tqdm(range(1, epochs+1), desc = "GAN training")
+    for epoch in pbar:
         epoch_d_losses = []
         epoch_g_losses = []
         for batch in dataloader:
@@ -110,10 +111,10 @@ def train_gan(
             loss_g.backward()
             opt_g.step()
 
-        if epoch % 10 == 0:
-            print(
-                f"Epoch {epoch}/{epochs} | D: {np.mean(epoch_d_losses):.4f} | G: {np.mean(epoch_g_losses):.4f}"
-            )
+        pbar.set_postfix(
+            {"D": f"{np.mean(epoch_d_losses):.4f}", "G": f"{np.mean(epoch_g_losses):.4f}"}
+        )
+    pbar.close()
 
 
 def train_wgan_gp(
