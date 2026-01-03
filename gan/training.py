@@ -65,7 +65,7 @@ def train_gan(
     opt_g = torch.optim.Adam(G.parameters(), lr=lr_G, betas=(0.5, 0.999))
     opt_d = torch.optim.Adam(D.parameters(), lr=lr_D, betas=(0.5, 0.999))
     pbar = tqdm(range(1, epochs+1), desc = "GAN training")
-    for epoch in pbar:
+    for _ in pbar:
         epoch_d_losses = []
         epoch_g_losses = []
         for batch in dataloader:
@@ -170,8 +170,8 @@ def train_wgan_gp(
     # set optimizers
     opt_g = torch.optim.Adam(G.parameters(), lr=lr_G, betas=(0.0, 0.9))
     opt_d = torch.optim.Adam(D.parameters(), lr=lr_D, betas=(0.0, 0.9))
-
-    for epoch in range(1, epochs + 1):
+    pbar = tqdm(range(1, epochs+1), desc = "WGAN-GP training")
+    for _ in pbar:
         epoch_d_losses = []
         epoch_g_losses = []
         for batch in dataloader:
@@ -213,9 +213,7 @@ def train_wgan_gp(
             loss_g.backward()
             opt_g.step()
 
-        if epoch % 10 == 0:
-            print(
-                f"Epoch {epoch}/{epochs} | "
-                f"D loss: {np.mean(epoch_d_losses):.4f} | "
-                f"G loss: {np.mean(epoch_g_losses):.4f}"
-            )
+        pbar.set_postfix(
+            {"D": f"{np.mean(epoch_d_losses):.4f}", "G": f"{np.mean(epoch_g_losses):.4f}"}
+        )
+    pbar.close()
