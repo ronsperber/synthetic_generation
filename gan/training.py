@@ -54,14 +54,14 @@ def train_gan(
     dataloader = (
         X if isinstance(X, DataLoader) else make_dataloader(X, c, batch_size=batch_size)
     )
-
-    # verify dimensions that mus match
+    if epochs <= 0:
+        raise ValueError("Number of epochs must be positive")
+    # verify dimensions that must match
     if G.output_dim != D.feature_dim:
         raise ValueError(f"G outputs {G.output_dim}, D expects {D.feature_dim}")
-
     if G.conditional_dim != D.conditional_dim:
         raise ValueError("Conditional dimensions must match")
-    # set the opitmizers
+    # set the optimizers
     opt_g = torch.optim.Adam(G.parameters(), lr=lr_G, betas=(0.5, 0.999))
     opt_d = torch.optim.Adam(D.parameters(), lr=lr_D, betas=(0.5, 0.999))
     pbar = tqdm(range(1, epochs+1), desc = "GAN training")
@@ -161,7 +161,8 @@ def train_wgan_gp(
     dataloader = (
         X if isinstance(X, DataLoader) else make_dataloader(X, c, batch_size=batch_size)
     )
-
+    if epochs <= 0:
+        raise ValueError("Number of epochs must be positive")
     # validate dimensions
     if G.output_dim != D.feature_dim:
         raise ValueError("Generator / Critic dimension mismatch")

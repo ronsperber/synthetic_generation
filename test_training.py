@@ -109,20 +109,15 @@ def test_invalid_batch_size():
         train_gan(X, G, D, epochs=1, batch_size=0)
 
 
-def test_negative_epochs_does_not_train():
-    """Test that negative epochs results in no training iterations"""
+def test_negative_epochs_raises_error():
+    """Test that negative epochs raises a ValueError"""
     torch.manual_seed(42)
     G = Generator(noise_dim=20, num_hidden_layers=2, out_dim=10, hidden_dims=(32, 32), conditional_dim=0)
     D = Discriminator(feature_dim=10, num_hidden_layers=2, hidden_dims=(32, 32), conditional_dim=0)
     X = torch.randn(32, 10)
-    initial_g_params = [p.clone() for p in G.parameters()]
     
-    # Negative epochs should result in no training iterations (empty range)
-    train_gan(X, G, D, epochs=-5, batch_size=16)
-    
-    # Verify parameters haven't changed
-    for p_init, p_final in zip(initial_g_params, G.parameters()):
-        assert torch.allclose(p_init, p_final), "Parameters should not change with negative epochs"
+    with pytest.raises(ValueError):
+        train_gan(X, G, D, epochs=-5, batch_size=16)
 
 
 # =====================
