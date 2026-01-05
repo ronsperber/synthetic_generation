@@ -53,7 +53,17 @@ class Generator(nn.Module):
             when use_conditional is True, represents the dimension of the conditional
         """
         super().__init__()
-
+        # save initialization parameters for recreating model
+        self.init_args = {
+            "noise_dim": noise_dim,
+            "num_hidden_layers": num_hidden_layers,
+            "out_dim": out_dim,
+            "hidden_dims": hidden_dims,
+            "hidden_activation": hidden_activation,
+            "output_activation": output_activation,
+            "use_conditional": use_conditional,
+            "conditional_dim": conditional_dim
+        }
         if isinstance(hidden_dims, tuple):
             hidden_dims = [hidden_dims] * num_hidden_layers
         # validate length of hidden_dims
@@ -172,7 +182,16 @@ class Discriminator(nn.Module):
             when use_conditional is True, the dimension of the conditional
         """
         super().__init__()
-
+        # save initialization parameters for recreating model
+        self.init_args={
+            "feature_dim": feature_dim,
+            "num_hidden_layers": num_hidden_layers,
+            "hidden_dims": hidden_dims,
+            "hidden_activation": hidden_activation,
+            "use_conditional": use_conditional,
+            "use_sigmoid": use_sigmoid,
+            "conditional_dim": conditional_dim
+        }
         if isinstance(hidden_dims, tuple):
             hidden_dims = [hidden_dims] * num_hidden_layers
         # valitdate that we have the right number of hidden_dims
