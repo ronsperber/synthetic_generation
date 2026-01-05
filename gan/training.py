@@ -22,6 +22,7 @@ def train_gan(
     batch_size: int = 64,
     epochs: int = 200,
     c: torch.Tensor | None = None,
+    save_path: str | None = None
 ):
     """
     Function to train a GAN
@@ -46,6 +47,8 @@ def train_gan(
         number of epochs to train over
     c : Optional torch.Tensor
         for conditional GAN, the conditional
+    save_path: str | None
+        when not None, where to save information about the models
     """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     G.to(device)
@@ -115,6 +118,14 @@ def train_gan(
             {"D": f"{np.mean(epoch_d_losses):.4f}", "G": f"{np.mean(epoch_g_losses):.4f}"}
         )
     pbar.close()
+    if save_path is not None:
+        torch.save({
+            "epoch": epochs,
+            "G_config": G.init_args,
+            "D_config": D.init_args,
+            "G_state_dict": G.state_dict(),
+            "D_state_dict": D.state_dict()
+        }, save_path)
 
 
 def train_wgan_gp(
