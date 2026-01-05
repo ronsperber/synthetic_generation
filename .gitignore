@@ -180,3 +180,4 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 Untitled*.*
+future_work.txt
