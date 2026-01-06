@@ -1,7 +1,7 @@
 """
 module of helper functions for this project
 """
-from typing import Type
+from typing import Type, Callable
 import torch
 import torch.nn as nn
 from torch.utils.data import TensorDataset, DataLoader
@@ -86,7 +86,7 @@ def load_gan_checkpoint(
     path: str,
     generator_cls:Type[nn.Module] = Generator,
     discriminator_cls:Type[nn.Module] = Discriminator,
-    map_location: callable | str | dict | None = None,
+    map_location: Callable | str | dict | None = None,
 ):
     """
     function to read in saved models
