@@ -139,6 +139,7 @@ def train_wgan_gp(
     c: torch.Tensor | None = None,
     n_critic: int = 5,
     lambda_gp: float = 10.0,
+    save_path : str | None = None
 ):
     """
     Function to train a WGAN-GP
@@ -164,6 +165,9 @@ def train_wgan_gp(
         number of passes the critic makes each batch
     lambda_gp : float
         lambda used for the gradient penalty
+    save_path : str | None:
+        when not None, the path to save model information
+    
     """
     device = "cuda" if torch.cuda.is_available() else "cpu"
     G.to(device)
@@ -229,3 +233,13 @@ def train_wgan_gp(
             {"D": f"{np.mean(epoch_d_losses):.4f}", "G": f"{np.mean(epoch_g_losses):.4f}"}
         )
     pbar.close()
+    if save_path is not None:
+        torch.save(
+            {
+                "epoch":epochs,
+                "G_config":G.init_args,
+                "D_config":D.init_args,
+                "G_state_dict":G.state_dict(),
+                "D_state_dict":D.state_dict()
+            },save_path
+        )
