@@ -27,6 +27,7 @@ This is not an image-focused GAN framework.
   Utility functions, including:
   - `make_dataloader()` for wrapping tensors into a `DataLoader`
   - `gradient_penalty()` for WGAN-GP
+  - `load_gan_checkpoint` to load a saved model
 
 - `Notebooks`   
   Sample notebooks illustrating
@@ -129,7 +130,25 @@ train_gan(
 # generate fake data from this
 X_fake_cond = G_cond.generate(20000, c)
 ```
+To save the results of training, add a `save_path` argument, e.g.
+```python
+train_gan(
+  X=X_torch,
+  G=G_cond,
+  D=D_cond,
+  c=c,
+  save_path='cond_gan.pt'
+)
+```
 
+To then load the model, we use the `load_gan_checkpoint` as follows
+```python
+from gan.utils import load_gan_checkpoint
+G,D,configs = load_gan_checkpoint(
+  path = 'cond_gan.pt'
+)
+```
+`G` will be a copy of the trained Generator, `D` will be a copy of the trained Discriminator, and `configs` will be a dictionary of configs used in the train function. 
 ### WGAN-GP notes
 
 To train a WGAN-GP use `train_wgan_gp() instead of `train_gan()`

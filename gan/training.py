@@ -130,6 +130,8 @@ def train_gan(
         )
     pbar.close()
     if save_path is not None:
+        # when saving models, note that D_config and G_config contain activation function classes 
+        # e.g. nn.LeakyReLU, so when loading, torch.load will need weights_only=False
         torch.save({
             "training_configs": {
                 "epochs": epochs,
@@ -251,6 +253,8 @@ def train_wgan_gp(
         )
     pbar.close()
     if save_path is not None:
+        # when saving models, note that D_config and G_config contain activation function classes 
+        # e.g. nn.LeakyReLU, so when loading, torch.load will need weights_only=False
         torch.save(
             {
                 "training_configs" : {
