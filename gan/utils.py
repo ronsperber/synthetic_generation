@@ -3,8 +3,9 @@ module of helper functions for this project
 """
 
 import torch
+import torch.nn as nn
 from torch.utils.data import TensorDataset, DataLoader
-from .models import Discriminator
+from .models import Discriminator, Generator
 
 
 def make_dataloader(
@@ -80,3 +81,43 @@ def gradient_penalty(
     gp = ((grads.norm(2, dim=1) - 1) ** 2).mean()
     # multiply by lambda_gp
     return lambda_gp * gp
+
+def load_gan_checkpoint(
+    path: str,
+    generator_cls:nn.Module = Generator,
+    discriminator_cls:nn.Module = Discriminator,
+    map_location: callable | str | dict | None = None,
+):
+    """
+    function to read in saved models
+    Parameters
+    ----------
+    path : str
+        file path for saved model
+    generator_cls : nn.Module
+        class used for the Generator
+    discriminator_cls: nn.Module
+        class used for the Discriminator/Critic
+    map_location: callable | str | dict | None
+        a function, torch.device, string or a dict specifying how to remap storage locations
+    Returns
+    -------
+    G: generator_cls
+        an element of the generator class with the architecture and weights from the saved model
+    D: discriminator_cls
+        an element of the discriminator class with the architecture and weights from the saved model
+    
+    """
+    ckpt = torch.load(
+        path,
+        map_location=map_location,
+        weights_only=False,
+    )
+
+    G = generator_cls(**ckpt["G_config"])
+    D = discriminator_cls(**ckpt["D_config"])
+
+    G.load_state_dict(ckpt["G_state_dict"])
+    D.load_state_dict(ckpt["D_state_dict"])
+
+    return G, D, ckpt.get("training_configs")

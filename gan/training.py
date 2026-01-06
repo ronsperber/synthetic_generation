@@ -2,7 +2,7 @@
 module with functions to train a GAN and a WGAN-GP
 """
 
-from collections.abc import Callable
+from typing import Literal
 import torch
 import torch.nn as nn
 import numpy as np
@@ -18,7 +18,7 @@ def train_gan(
     D: Discriminator,
     lr_G: float = 1e-4,
     lr_D: float = 1e-4,
-    criterion: Callable = nn.BCEWithLogitsLoss(),
+    loss : Literal["bce", "bce_with_logits"] = "bce_with_logits",
     batch_size: int = 64,
     epochs: int = 200,
     c: torch.Tensor | None = None,
@@ -38,7 +38,7 @@ def train_gan(
         the learning rate for the Generator
     lr_D : float
         the learning rate for the Discriminator
-    criterion : Callable
+    loss : str ('bce' or 'bce_with_logits')
         loss function to be used
     batch_size : int
         when the data is not already a DataLoader, the batch size
@@ -53,6 +53,17 @@ def train_gan(
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     G.to(device)
     D.to(device)
+    if loss == "bce":
+        criterion = nn.BCELoss()
+    elif loss == "bce_with_logits":
+        criterion = nn.BCEWithLogitsLoss()
+    else:
+        raise ValueError("Loss must be 'bce' or 'bce_with_logits'")
+    # make sure loss matches output from Discriminator
+    if loss == "bce" and not D.init_args["use_sigmoid"]:
+        raise ValueError("BCELoss requires sigmoid discriminator")
+    if loss == "bce_with_logits" and D.init_args["use_sigmoid"]:
+        raise ValueError("BCEWithLogitsLoss is incompatible with sigmoid discriminator")
     # if the data is not already in a DataLoader, put it in one
     dataloader = (
         X if isinstance(X, DataLoader) else make_dataloader(X, c, batch_size=batch_size)
@@ -120,7 +131,13 @@ def train_gan(
     pbar.close()
     if save_path is not None:
         torch.save({
-            "epoch": epochs,
+            "training_configs": {
+                "epochs": epochs,
+                "lr_G": lr_G,
+                "lr_D": lr_D,
+                "batch_size": batch_size,
+                "loss": loss
+            },
             "G_config": G.init_args,
             "D_config": D.init_args,
             "G_state_dict": G.state_dict(),
@@ -236,7 +253,14 @@ def train_wgan_gp(
     if save_path is not None:
         torch.save(
             {
-                "epoch":epochs,
+                "training_configs" : {
+                    "epochs": epochs,
+                    "lr_G": lr_G,
+                    "lr_D": lr_D,
+                    "batch_size": batch_size,
+                    "n_critic": n_critic,
+                    "lambda_gp": lambda_gp
+                },
                 "G_config":G.init_args,
                 "D_config":D.init_args,
                 "G_state_dict":G.state_dict(),
