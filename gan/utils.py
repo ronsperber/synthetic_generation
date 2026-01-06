@@ -1,7 +1,7 @@
 """
 module of helper functions for this project
 """
-
+from typing import Type
 import torch
 import torch.nn as nn
 from torch.utils.data import TensorDataset, DataLoader
@@ -84,8 +84,8 @@ def gradient_penalty(
 
 def load_gan_checkpoint(
     path: str,
-    generator_cls:nn.Module = Generator,
-    discriminator_cls:nn.Module = Discriminator,
+    generator_cls:Type[nn.Module] = Generator,
+    discriminator_cls:Type[nn.Module] = Discriminator,
     map_location: callable | str | dict | None = None,
 ):
     """
@@ -106,13 +106,24 @@ def load_gan_checkpoint(
         an element of the generator class with the architecture and weights from the saved model
     D: discriminator_cls
         an element of the discriminator class with the architecture and weights from the saved model
-    
+    training_configs: Dict
+        configuration used for training
     """
     ckpt = torch.load(
         path,
         map_location=map_location,
         weights_only=False,
     )
+    # validate that we have config and state dict for the models
+    required_keys = {
+        "G_config",
+        "D_config",
+        "G_state_dict",
+        "D_state_dict"
+        }
+    missing = required_keys - ckpt.keys()
+    if missing:
+        raise KeyError(f"Checkpoint missing keys: {missing}")
 
     G = generator_cls(**ckpt["G_config"])
     D = discriminator_cls(**ckpt["D_config"])
@@ -120,4 +131,4 @@ def load_gan_checkpoint(
     G.load_state_dict(ckpt["G_state_dict"])
     D.load_state_dict(ckpt["D_state_dict"])
 
-    return G, D, ckpt.get("training_configs")
+    return G, D, ckpt.get("training_configs",{})
