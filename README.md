@@ -25,8 +25,8 @@ This is not an image-focused GAN framework.
 
 - `gan/utils.py`  
   Utility functions, including:
-  - `make_dataloader()` for wrapping tensors into a `DataLoader`
-  - `gradient_penalty()` for WGAN-GP
+  - `make_dataloader` for wrapping tensors into a `DataLoader`
+  - `gradient_penalty` for WGAN-GP
   - `load_gan_checkpoint` to load a saved model
 
 - `Notebooks`   
