@@ -223,7 +223,7 @@ class Discriminator(nn.Module):
         self.output_layer = nn.Linear(hidden_dims[-1][1], 1)
         self.out_activation = nn.Sigmoid() if use_sigmoid else nn.Identity()
 
-    def forward(self, x: torch.Tensor, c: torch.Tensor | None = None):
+    def forward(self, x: torch.Tensor, c: torch.Tensor | None = None, return_features: bool = False):
         """
         forward method for the network
         Parameters
@@ -232,17 +232,27 @@ class Discriminator(nn.Module):
             data that will be evaluated by the Discriminator/Critic
         c : optional torch.Tensor
             When a condtional is being used, the conditional to be evaluated
+        return_features : bool
+            whether or not to return the output of the last hidden layer as well as final output
         Returns
         -------
         torch.Tensor
             output of the Discriminator/Critic
             when a Discriminator either the logit or probability,
             when a Critic, critic score
+        Optional torch.Tensor
+            when return_features is True, the output of the last hidden layer
         """
         if c is not None:
             x = torch.cat([x, c], dim=1)
         x = self.activation(self.input_layer(x))
         for layer in self.hidden_layers:
             x = self.activation(layer(x))
+        feature_space = x
         x = self.output_layer(x)
-        return self.out_activation(x)
+        final = self.out_activation(x)
+        if return_features:
+            return final, feature_space
+        return final
+    
+    
