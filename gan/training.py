@@ -18,6 +18,8 @@ def train_gan(
     D: Discriminator,
     lr_G: float = 1e-4,
     lr_D: float = 1e-4,
+    lambda_fm_1: float = 0,
+    lambda_fm_2: float = 0,
     loss : Literal["bce", "bce_with_logits"] = "bce_with_logits",
     batch_size: int = 64,
     epochs: int = 200,
@@ -38,6 +40,10 @@ def train_gan(
         the learning rate for the Generator
     lr_D : float
         the learning rate for the Discriminator
+    lambda_fm_1 :
+        weight on loss/penalty to use for E(fake_features) - E(real_features)
+    lambda_fm_2 : 
+        weight on loss/penalty to use for E(fake_features**2) - E(real_features**2)
     loss : str ('bce' or 'bce_with_logits')
         loss function to be used
     batch_size : int
@@ -117,9 +123,20 @@ def train_gan(
             # ====================
             # generate fake data and get the value from the Discriminator for it
             x_fake = G.generate(B, c_batch)
-            d_fake = D(x_fake, c_batch)
-
+            # determine if we need inputs for feature matching
+            need_fm = (lambda_fm_1 != 0.0) or (lambda_fm_2 != 0.0)
+            # if we need feature matching get the output in the feature space from
+            # both x_real and x_fake
+            if need_fm:
+                _, f_real = D(x_real, c_batch, return_features=True)
+                d_fake, f_fake = D(x_fake, c_batch, return_features=True)
+            else:
+                d_fake = D(x_fake, c_batch)
             loss_g = criterion(d_fake, torch.ones_like(d_fake))
+            if lambda_fm_1 > 0.0:
+                loss_g += lambda_fm_1 * ((f_fake.mean(0) - f_real.mean(0))**2).mean()
+            if lambda_fm_2 > 0.0:
+                loss_g += lambda_fm_2 * (((f_fake**2).mean(0) -(f_real**2).mean(0))**2).mean()
             epoch_g_losses.append(loss_g.item())
             opt_g.zero_grad()
             loss_g.backward()
