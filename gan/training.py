@@ -136,7 +136,7 @@ def train_gan(
             if lambda_fm_1 > 0.0:
                 loss_g += lambda_fm_1 * ((f_fake.mean(0) - f_real.mean(0))**2).mean()
             if lambda_fm_2 > 0.0:
-                loss_g += lambda_fm_2 * (((f_fake**2).mean(0) -(f_real**2).mean(0))**2).mean()
+                loss_g += lambda_fm_2 * ((f_fake.var(0) -f_real.var(0))**2).mean()
             epoch_g_losses.append(loss_g.item())
             opt_g.zero_grad()
             loss_g.backward()
