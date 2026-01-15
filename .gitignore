@@ -181,3 +181,4 @@ cython_debug/
 .cursorindexingignore
 Untitled*.*
 future_work.txt
+data/*.*
