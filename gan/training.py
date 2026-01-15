@@ -136,7 +136,23 @@ def train_gan(
             if lambda_fm_1 > 0.0:
                 loss_g += lambda_fm_1 * ((f_fake.mean(0) - f_real.mean(0))**2).mean()
             if lambda_fm_2 > 0.0:
-                loss_g += lambda_fm_2 * ((f_fake.var(0) -f_real.var(0))**2).mean()
+                # compute all variances and covariances
+                # first get centered (X-E(X))
+                f_fake_centered = f_fake - f_fake.mean(0,keepdim=True)
+                f_real_centered = f_real - f_real.mean(0,keepdim=True)
+                # now to get the matrices we need the size to use to get variance/covariances
+                b_size = f_fake_centered.shape[0]
+                # compute the matrices to get variances/covariances
+                cov_fake = (f_fake_centered.T @ f_fake_centered) / b_size
+                cov_real = (f_real_centered.T @ f_real_centered) / b_size
+                cov_diff = cov_fake - cov_real
+                # use upper triangular version of the matrix so each term only gets one
+                # since we want the mean over the non-masked terms we compute that based on 
+                # triangular sums
+                num_dims = cov_diff.shape[0] # number of rows/columns
+                num_entries = num_dims * (num_dims + 1) // 2 # sum of 1 + 2 + ... num_dims
+                cov_penalty = torch.triu(cov_diff**2).sum() / num_entries
+                loss_g += lambda_fm_2 * cov_penalty
             epoch_g_losses.append(loss_g.item())
             opt_g.zero_grad()
             loss_g.backward()
