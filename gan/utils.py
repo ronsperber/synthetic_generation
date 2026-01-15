@@ -134,3 +134,54 @@ def load_gan_checkpoint(
     D.load_state_dict(ckpt["D_state_dict"])
 
     return G, D, ckpt.get("training_configs",{})
+
+def cov_matrix(data : torch.Tensor, unbiased: bool = False):
+    """
+    Returns the covariance matrix of a batch of data
+    Parameters
+    ----------
+    data : torch.Tensor
+        tensor with dimensions (batch_size, num_features) that we 
+        want to get covariance matrix for
+    unbiased : bool
+        whether we want unbiased estimator (divide by batch_size - 1)
+    Returns
+    -------
+    torch.Tensor
+        (num_features, num_features) matrix with the (i,j)th entry E((X_i-E(X_i))(X_j - E(X_j)))
+    """
+    if data.dim() != 2:
+        raise ValueError("Data should be two dimensional (batch_size, num_features)")
+    centered_data = data - data.mean(0, keepdim=True)
+    batch_size = data.shape[0]
+    if unbiased and batch_size < 2:
+        raise ValueError("Can not use unbiased covariance with batch size < 2")
+    divisor = batch_size - 1 if unbiased else batch_size
+    return centered_data.T @ centered_data / divisor # has shape (num_features, num_features)
+
+def cov_penalty(f_fake: torch.Tensor, f_real: torch.Tensor, unbiased: bool = False):
+    """
+    Compute the covariance/variance penalty term for feature matching
+    Parameters
+    ----------
+    f_fake : torch.Tensor
+        features from the fake data
+    f_real : torch.Tensor
+        features from the real data
+    unbiased : bool
+        whether or not to use unbiased statistics
+    Returns
+    torch.Tensor
+        mean of sum of all variance differences and all covariance differences
+    """
+    cov_real = cov_matrix(f_real, unbiased)
+    cov_fake = cov_matrix(f_fake, unbiased)
+    # compute the square of the differences
+    cov_diff = cov_real - cov_fake
+    cov_diff_2 = cov_diff ** 2
+    # get the upper triangular version so each covariance appears once
+    cov_diff_2_upper = torch.triu(cov_diff_2)
+    # get the correct number of entries
+    num_features = cov_diff_2_upper.shape[0]
+    divisor = num_features * (num_features + 1) // 2
+    return cov_diff_2_upper.sum() / divisor

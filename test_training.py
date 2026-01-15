@@ -9,6 +9,7 @@ import numpy as np
 from torch.utils.data import DataLoader, TensorDataset
 from gan.models import Generator, Discriminator
 from gan.training import train_gan, train_wgan_gp
+from gan.utils import cov_matrix, cov_penalty
 
 
 # =====================
@@ -170,7 +171,7 @@ def test_loss_computation(models, sample_data):
     G, D = models
     # Run with custom criterion to capture losses
     train_gan(sample_data, G, D, epochs=1, batch_size=16, 
-              criterion=nn.BCEWithLogitsLoss())
+              loss="bce_with_logits")
     
     # If we reach here without errors, losses were computed correctly
 
@@ -324,6 +325,50 @@ def test_gan_vs_wgan_gp_convergence(sample_data):
     # Both should complete without errors
     assert G_gan is not None
     assert G_wgan is not None
+
+
+
+def test_cov_matrix_and_penalty():
+    # Small example (batch_size=3, features=2)
+    f_real = torch.tensor([[1.0, 2.0],
+                           [2.0, 4.0],
+                           [3.0, 6.0]])
+    f_fake = torch.tensor([[2.0, 1.0],
+                           [4.0, 2.0],
+                           [6.0, 3.0]])
+
+    # --- Test cov_matrix ---
+    # Manually compute variances and covariance
+    mean_real = f_real.mean(0)
+    mean_fake = f_fake.mean(0)
+
+    centered_real = f_real - mean_real
+    centered_fake = f_fake - mean_fake
+
+    var_real = (centered_real ** 2).sum(0) / f_real.shape[0]
+    var_fake = (centered_fake ** 2).sum(0) / f_fake.shape[0]
+    cov_real_off = (centered_real[:,0] * centered_real[:,1]).sum() / f_real.shape[0]
+    cov_fake_off = (centered_fake[:,0] * centered_fake[:,1]).sum() / f_fake.shape[0]
+
+    cov_real_manual = torch.tensor([[var_real[0], cov_real_off],
+                                    [cov_real_off, var_real[1]]])
+    cov_fake_manual = torch.tensor([[var_fake[0], cov_fake_off],
+                                    [cov_fake_off, var_fake[1]]])
+
+    # Check cov_matrix function
+    cov_real_fn = cov_matrix(f_real)
+    cov_fake_fn = cov_matrix(f_fake)
+    assert torch.allclose(cov_real_fn, cov_real_manual), "cov_matrix real mismatch"
+    assert torch.allclose(cov_fake_fn, cov_fake_manual), "cov_matrix fake mismatch"
+
+    # --- Test cov_penalty ---
+    manual_penalty = ((var_real[0]-var_fake[0])**2 + 
+                      (var_real[1]-var_fake[1])**2 + 
+                      (cov_real_off - cov_fake_off)**2) / 3
+
+    penalty_fn = cov_penalty(f_fake, f_real)
+    assert torch.isclose(penalty_fn, manual_penalty), f"cov_penalty mismatch: {penalty_fn} vs {manual_penalty}"
+
 
 
 if __name__ == "__main__":
