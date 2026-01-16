@@ -121,6 +121,9 @@ def train_gan(
             # ====================
             # Train Generator
             # ====================
+            # freeze D parameters during Generator training
+            for param in D.parameters():
+              param.requires_grad = False
             # generate fake data and get the value from the Discriminator for it
             x_fake = G.generate(B, c_batch)
             # determine if we need inputs for feature matching
@@ -134,16 +137,21 @@ def train_gan(
                 d_fake = D(x_fake, c_batch)
             loss_g = criterion(d_fake, torch.ones_like(d_fake))
             if lambda_fm_1 > 0.0:
-                loss_g += lambda_fm_1 * ((f_fake.mean(0) - f_real.mean(0))**2).mean()
+                mean_penalty = ((f_fake.mean(0) - f_real.mean(0))**2).mean()
+                loss_g += lambda_fm_1 * mean_penalty
             if lambda_fm_2 > 0.0:
-                loss_g += lambda_fm_2 * cov_penalty(f_fake, f_real)
+                cov_pen = cov_penalty(f_fake, f_real)
+                loss_g += lambda_fm_2 * cov_pen
             epoch_g_losses.append(loss_g.item())
             opt_g.zero_grad()
             loss_g.backward()
             opt_g.step()
-
+            # Unfreeze D parameters
+            for param in D.parameters():
+               param.requires_grad = True    
         pbar.set_postfix(
             {"D": f"{np.mean(epoch_d_losses):.4f}", "G": f"{np.mean(epoch_g_losses):.4f}"}
+
         )
     pbar.close()
     if save_path is not None:
