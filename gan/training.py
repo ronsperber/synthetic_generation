@@ -43,7 +43,7 @@ def train_gan(
     lambda_fm_1 :
         weight on loss/penalty to use for E(fake_features) - E(real_features)
     lambda_fm_2 : 
-        weight on loss/penalty to use for E(fake_features**2) - E(real_features**2)
+        weight on loss/penalty to use for second moments
     loss : str ('bce' or 'bce_with_logits')
         loss function to be used
     batch_size : int
@@ -162,6 +162,8 @@ def train_gan(
                 "epochs": epochs,
                 "lr_G": lr_G,
                 "lr_D": lr_D,
+                "lambda_fm_1": lambda_fm_1,
+                "lambda_fm_2": lambda_fm_2,
                 "batch_size": batch_size,
                 "loss": loss
             },
@@ -178,6 +180,8 @@ def train_wgan_gp(
     D: Discriminator,
     lr_G: float = 1e-4,
     lr_D: float = 1e-4,
+    lambda_fm_1: float = 0,
+    lambda_fm_2: float = 0,
     batch_size: int = 64,
     epochs: int = 200,
     c: torch.Tensor | None = None,
@@ -198,6 +202,10 @@ def train_wgan_gp(
         the learning rate for G
     lr_D : float
         the learning rate for D
+    lambda_fm_1 :
+        weight on loss/penalty to use for E(fake_features) - E(real_features)
+    lambda_fm_2 : 
+        weight on loss/penalty to use for second moments
     batch_size : int
         when the data is not already a DataLoader, the batch size to be used.
         when the data is a DataLoader, this has no effect
@@ -266,13 +274,33 @@ def train_wgan_gp(
             # Train generator
             # ---------------------
             # generate fake data and compute the loss function
+            # first, we freeze D
+            for param in D.parameters():
+              param.requires_grad = False
+            # determine if we need inputs for feature matching
+            need_fm = (lambda_fm_1 != 0.0) or (lambda_fm_2 != 0.0)
             x_fake = G.generate(B, c_batch)
-            loss_g = -D(x_fake, c_batch).mean()
+            # if we need feature matching get the output in the feature space from
+            # both x_real and x_fake
+            if need_fm:
+                _, f_real = D(x_real, c_batch, return_features=True)
+                d_fake, f_fake = D(x_fake, c_batch, return_features=True)
+            else:
+                d_fake = D(x_fake, c_batch)
+            loss_g = -d_fake.mean()
+            if lambda_fm_1 > 0.0:
+                mean_penalty = ((f_fake.mean(0) - f_real.mean(0))**2).mean()
+                loss_g += lambda_fm_1 * mean_penalty
+            if lambda_fm_2 > 0.0:
+                cov_pen = cov_penalty(f_fake, f_real)
+                loss_g += lambda_fm_2 * cov_pen
             epoch_g_losses.append(loss_g.item())
             opt_g.zero_grad()
             loss_g.backward()
             opt_g.step()
-
+            # Unfreeze D parameters
+            for param in D.parameters():
+               param.requires_grad = True
         pbar.set_postfix(
             {"D": f"{np.mean(epoch_d_losses):.4f}", "G": f"{np.mean(epoch_g_losses):.4f}"}
         )
@@ -286,6 +314,8 @@ def train_wgan_gp(
                     "epochs": epochs,
                     "lr_G": lr_G,
                     "lr_D": lr_D,
+                    "lambda_fm_1": lambda_fm_1,
+                    "lambda_fm_2": lambda_fm_2,
                     "batch_size": batch_size,
                     "n_critic": n_critic,
                     "lambda_gp": lambda_gp
