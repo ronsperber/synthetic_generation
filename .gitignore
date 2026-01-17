@@ -181,4 +181,5 @@ cython_debug/
 .cursorindexingignore
 Untitled*.*
 future_work.txt
-data/*.*
+data/
+local_notebooks/
