@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "gan"
 version = "0.1.0"
 description = "GAN and WGAN-GP training utilities"
-dependencies = ["torch", "numpy"]
+dependencies = ["torch", "numpy", "tqdm"]
 
 [tool.setuptools.packages.find]
 where = ["."]

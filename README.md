@@ -39,11 +39,17 @@ This is not an image-focused GAN framework.
 ---
 
 ## Installation
+Clone the repository and change directories to it
+```bash
+git clone https://github.com/ronsperber/synthetic_generation.git
+cd synthetic_generation
+```
 
-Install the required dependencies with:
+Install required dependencies and the package in editable mode with:
 
 ```bash
 pip install -r requirements.txt
+pip install -e .
 ```
 
 ## Example Usage
