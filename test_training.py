@@ -589,5 +589,101 @@ def test_generator_multiple_heads():
     # head3: Sigmoid, should be in [0,1]
     head3_out = out[:, 5:6]
     assert ((0 <= head3_out) & (head3_out <= 1)).all(), "Sigmoid head out of range [0,1]"
+
+def test_generator_multiple_heads_with_conditional():
+    torch.manual_seed(0)
+    heads = [
+        OutputHead(dim=2, activation=nn.Identity, name="head1"),
+        OutputHead(dim=3, activation=nn.ReLU, name="head2"),
+    ]
+    
+    G = Generator(
+        noise_dim=4,
+        num_hidden_layers=2,
+        hidden_dims=[(6, 8), (8, 8)],  # 4 noise + 2 conditional = 6
+        output_heads=heads,
+        use_conditional=True,
+        conditional_dim=2,
+    )
+    
+    z = torch.randn(5, 4)
+    c = torch.randn(5, 2)
+    out = G(z, c)
+    
+    assert out.shape == (5, 5)
+
+def test_generator_generate_with_multiple_heads():
+    torch.manual_seed(0)
+    heads = [
+        OutputHead(dim=3, activation=nn.Identity, name="h1"),
+        OutputHead(dim=2, activation=nn.Tanh, name="h2"),
+    ]
+    
+    G = Generator(
+        noise_dim=5,
+        num_hidden_layers=2,
+        hidden_dims=[(5, 10), (10, 10)],
+        output_heads=heads
+    )
+    
+    out = G.generate(9)
+    assert out.shape == (9, 5)
+    assert torch.isfinite(out).all()
+
+def test_generator_head_order_preserved():
+    torch.manual_seed(0)
+    heads = [
+        OutputHead(dim=1, activation=nn.Identity, name="a"),
+        OutputHead(dim=1, activation=nn.Identity, name="b"),
+        OutputHead(dim=1, activation=nn.Identity, name="c"),
+    ]
+    
+    G = Generator(
+        noise_dim=3,
+        num_hidden_layers=1,
+        hidden_dims=[(3, 4)],
+        output_heads=heads
+    )
+    
+    z = torch.randn(4, 3)
+    out = G(z)
+    
+    # Just check that slicing doesn't error and has correct shape
+    assert out[:, 0:1].shape == (4, 1)
+    assert out[:, 1:2].shape == (4, 1)
+    assert out[:, 2:3].shape == (4, 1)
+
+def test_generator_missing_out_dim_and_heads_raises():
+    with pytest.raises(ValueError):
+        Generator(
+            noise_dim=3,
+            num_hidden_layers=1,
+            hidden_dims=[(3, 4)],
+            out_dim=None,
+            output_heads=None
+        )
+
+def test_generator_multiple_heads_backward():
+    torch.manual_seed(0)
+    heads = [
+        OutputHead(dim=2, activation=nn.Identity, name="h1"),
+        OutputHead(dim=2, activation=nn.ReLU, name="h2"),
+    ]
+    
+    G = Generator(
+        noise_dim=4,
+        num_hidden_layers=2,
+        hidden_dims=[(4, 8), (8, 8)],
+        output_heads=heads
+    )
+    
+    z = torch.randn(6, 4)
+    out = G(z)
+    loss = out.mean()
+    loss.backward()
+    
+    grads = [p.grad for p in G.parameters() if p.grad is not None]
+    assert len(grads) > 0
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
