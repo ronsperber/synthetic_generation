@@ -3,7 +3,8 @@ model with classes for Generator and Discriminator (or Critic)
 for a GAN/WGAN-GP
 """
 
-from typing import Sequence, TypeAlias
+from typing import Sequence, TypeAlias, List
+from dataclasses import dataclass
 from collections.abc import Callable
 import torch
 import torch.nn as nn
@@ -13,20 +14,27 @@ LayerDims = tuple[int, int]
 HiddenDims: TypeAlias = LayerDims | Sequence[LayerDims]
 ActivationFactory: TypeAlias = Callable[[], nn.Module]
 
+# dataclass for output head info
+@dataclass
+class OutputHead:
+    dim: int                     # output dimension for this head
+    activation: Callable = None  # activation function, e.g., nn.Softplus
+    name: str = ""               # optional name to identify this head
 
 class Generator(nn.Module):
     """
     class for Generator in a GAN or WGAN
     """
 
+  
     def __init__(
         self,
         noise_dim: int,
         num_hidden_layers: int,
-        out_dim: int,
         hidden_dims: HiddenDims,
+        out_dim: int | None = None,
+        output_heads: List[OutputHead] | None = None,  # list[OutputHead]
         hidden_activation: ActivationFactory = nn.LeakyReLU,
-        output_activation: ActivationFactory = nn.Identity,
         use_conditional: bool = False,
         conditional_dim: int = 0,
     ):
@@ -38,15 +46,15 @@ class Generator(nn.Module):
             dimension of noise to use as inputs
         num_hidden_layers : int
             number of linear layers between input and output layers
-        out_dim : int
-            dimension of output
+        out_dim : int | None
+            dimension of output if no output heads specified
+        output_heads : list | None
+            output heads to use when specified
         hidden_dims : HiddenDims
             either a single (in_dim, out_dim) tuple reused for all hidden layers
             or a sequence of such tuples specifying each layer explicitly
         hidden_activation : ActivationFactory
             class used for activation after each layer other than the output layer
-        output_activation : ActivationFactory
-            class used for output activation function
         use_conditional : bool
             Boolean of whether or not an additional conditional is being used
         conditional_dim : int
@@ -60,10 +68,17 @@ class Generator(nn.Module):
             "out_dim": out_dim,
             "hidden_dims": hidden_dims,
             "hidden_activation": hidden_activation,
-            "output_activation": output_activation,
+            "output_heads": output_heads,
             "use_conditional": use_conditional,
             "conditional_dim": conditional_dim
         }
+        if output_heads is None:
+            if out_dim is None:
+                raise ValueError("Either out_dim or output_heads must be provided.")
+            # Default: single identity head
+            output_heads = [
+                OutputHead(dim=out_dim, activation=nn.Identity, name="default")
+            ]
         if isinstance(hidden_dims, tuple):
             hidden_dims = [hidden_dims] * num_hidden_layers
         # validate length of hidden_dims
@@ -83,17 +98,22 @@ class Generator(nn.Module):
         self.output_dim = out_dim
         self.activation = hidden_activation()
         self.conditional_dim = conditional_dim if use_conditional else 0
-        self.output_activation = output_activation()
+        self.output_heads = output_heads
         self.input_layer = nn.Linear(
             self.noise_dim + self.conditional_dim, hidden_dims[0][0]
         )
-
+        self.output_dim = sum(head.dim for head in output_heads)
         self.hidden_layers = nn.ModuleList()
         for i in range(num_hidden_layers):
             self.hidden_layers.append(nn.Linear(*hidden_dims[i]))
 
-        self.output_layer = nn.Linear(hidden_dims[-1][1], self.output_dim)
-
+        trunk_out_dim = hidden_dims[-1][1]
+        # Output heads
+        self.head_layers = nn.ModuleList()
+        self.head_activations = nn.ModuleList()
+        for head in self.output_heads:
+            self.head_layers.append(nn.Linear(trunk_out_dim,head.dim))
+            self.head_activations.append(head.activation())
     def forward(self, z: torch.Tensor, c: torch.Tensor | None = None):
         """
         forward method for the network
@@ -114,7 +134,11 @@ class Generator(nn.Module):
         for layer in self.hidden_layers:
             x = self.activation(layer(x))
 
-        return self.output_activation(self.output_layer(x))
+        outputs = []
+        for layer, activation in zip(self.head_layers, self.head_activations):
+            outputs.append(activation(layer(x)))
+
+        return torch.cat(outputs, dim=1)
 
     def generate(self, num_samples: int, c: torch.Tensor | None = None):
         """

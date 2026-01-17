@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 from torch.utils.data import DataLoader, TensorDataset
-from gan.models import Generator, Discriminator
+from gan.models import Generator, Discriminator, OutputHead
 from gan.training import train_gan, train_wgan_gp
 from gan.utils import cov_matrix, cov_penalty, make_dataloader
 
@@ -535,5 +535,59 @@ def test_feature_matching_changes_generator_WGAN():
     assert any(
         not torch.allclose(p_fm_2, p_fmb) for p_fm_2, p_fmb in zip(fm_2_params, fm_both_params)
         ), "fm_both same as fm_2"
+
+def test_generator_single_output():
+    torch.manual_seed(42)
+    G = Generator(
+        noise_dim=3,
+        num_hidden_layers=2,
+        hidden_dims=[(3, 8), (8, 8)],
+        out_dim=5  # single output
+    )
+    
+    # Generate 10 samples
+    z = torch.randn(10, 3)
+    out = G(z)
+    
+    # Check output shape
+    assert out.shape == (10, 5), f"Expected shape (10,5), got {out.shape}"
+    
+    # Check values are finite
+    assert torch.isfinite(out).all(), "Output contains NaN or Inf"
+
+# ===============================
+# Test 2: multiple output heads
+# ===============================
+def test_generator_multiple_heads():
+    torch.manual_seed(42)
+    heads = [
+        OutputHead(dim=2, activation=nn.Identity, name="head1"),
+        OutputHead(dim=3, activation=nn.ReLU, name="head2"),
+        OutputHead(dim=1, activation=nn.Sigmoid, name="head3")
+    ]
+    
+    G = Generator(
+        noise_dim=4,
+        num_hidden_layers=2,
+        hidden_dims=[(4, 8), (8, 8)],
+        output_heads=heads
+    )
+    
+    z = torch.randn(7, 4)
+    out = G(z)
+    
+    # Check output shape: sum of head dims
+    expected_dim = sum(head.dim for head in heads)
+    assert out.shape == (7, expected_dim), f"Expected shape (7,{expected_dim}), got {out.shape}"
+    
+    # Optional: check ReLU and Sigmoid outputs are in expected ranges
+    # head1: Identity, should match first 2 dims directly
+    head1_out = out[:, 0:2]
+    # head2: ReLU, should be >= 0
+    head2_out = out[:, 2:5]
+    assert (head2_out >= 0).all(), "ReLU head produced negative values"
+    # head3: Sigmoid, should be in [0,1]
+    head3_out = out[:, 5:6]
+    assert ((0 <= head3_out) & (head3_out <= 1)).all(), "Sigmoid head out of range [0,1]"
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
