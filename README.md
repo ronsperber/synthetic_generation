@@ -15,7 +15,7 @@ This is not an image-focused GAN framework.
 
 - `gan/models.py`  
   Contains classes for a **Generator** and **Discriminator (or Critic)**.  
-  These are fully connected feed-forward networks built from linear layers and nonlinear activation functions, with optional conditional inputs.
+  These are fully connected feed-forward networks built from linear layers and nonlinear activation functions, with optional conditional inputs. There is also an OutputHead dataclass with dims, activation, and name.
   The `Generator` exposes a `.generate()` method that handles noise sampling and device placement automatically
 
 - `gan/training.py`  
@@ -27,6 +27,7 @@ This is not an image-focused GAN framework.
   Utility functions, including:
   - `make_dataloader` for wrapping tensors into a `DataLoader`
   - `gradient_penalty` for WGAN-GP
+  - `cov_matrix` and `cov_penalty` for use for feature matching penalties
   - `load_gan_checkpoint` to load a saved model
 
 - `Notebooks`   
@@ -162,15 +163,17 @@ To train a WGAN-GP use `train_wgan_gp() instead of `train_gan()`
 For best results, it is recommended to:
 * scale data to be in the range [-1,1]
 * use a `tanh` output activation for the Generator
+
+To do this we will need a custom output head
 ```python
 import torch.nn as nn
-
+from gan.models import OutputHead
+heads = [OutputHead(dim=2,activation=nn.Tanh,name="scaled_output")]
 G = Generator(
     noise_dim=2,
     num_hidden_layers=2,
-    out_dim=2,
-    hidden_dims=(128, 128),
-    output_activation=nn.Tanh
+    output_heads=heads,
+    hidden_dims=(128, 128)
 )
 ```
 
@@ -179,4 +182,3 @@ G = Generator(
 * Conditional information is incorporated via feature concatenation
 * While WGAN-GP often improves stability, it may struggle on certain geometric toy datasets; conditional GANs can perform better in those cases
 * This repository is designed for experimentation and demonstration of GAN-based synthetic data generation, particularly for tabular data. While not a full production framework, the architecture and training loops are intentionally structured to be extensible toward production use with additional validation, monitoring, and data-specific constraints.
-
