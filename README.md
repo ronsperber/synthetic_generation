@@ -158,7 +158,7 @@ G,D,configs = load_gan_checkpoint(
 `G` will be a copy of the trained Generator, `D` will be a copy of the trained Discriminator, and `configs` will be a dictionary of configs used in the train function. 
 ### WGAN-GP notes
 
-To train a WGAN-GP use `train_wgan_gp() instead of `train_gan()`
+To train a WGAN-GP use `train_wgan_gp()` instead of `train_gan()`
 
 For best results, it is recommended to:
 * scale data to be in the range [-1,1]
