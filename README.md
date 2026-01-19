@@ -96,7 +96,7 @@ train_gan(
 X_fake = G.generate(10000)
 ```
 ### Training a conditional GAN
-The data is as we saw in the previous example (`X, centers,labels`)
+The data is as we saw in the previous example (`X, centers, labels`)
 
 ```python
 # Now a conditional GAN on the same data
