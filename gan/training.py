@@ -9,7 +9,7 @@ import numpy as np
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 from .models import Generator, Discriminator
-from .utils import make_dataloader, gradient_penalty, cov_penalty
+from .utils import make_dataloader, gradient_penalty, cov_penalty, feature_entropy
 
 
 def train_gan(
@@ -20,6 +20,7 @@ def train_gan(
     lr_D: float = 1e-4,
     lambda_fm_1: float = 0,
     lambda_fm_2: float = 0,
+    lambda_entropy: float = 0,
     loss : Literal["bce", "bce_with_logits"] = "bce_with_logits",
     batch_size: int = 64,
     epochs: int = 200,
@@ -40,10 +41,12 @@ def train_gan(
         the learning rate for the Generator
     lr_D : float
         the learning rate for the Discriminator
-    lambda_fm_1 :
+    lambda_fm_1 : float
         weight on loss/penalty to use for E(fake_features) - E(real_features)
-    lambda_fm_2 : 
+    lambda_fm_2 : float
         weight on loss/penalty to use for second moments
+    lambda_entropy : float
+        weight on loss/penalty to use for entropy in feature space
     loss : str ('bce' or 'bce_with_logits')
         loss function to be used
     batch_size : int
@@ -126,12 +129,14 @@ def train_gan(
               param.requires_grad = False
             # generate fake data and get the value from the Discriminator for it
             x_fake = G.generate(B, c_batch)
-            # determine if we need inputs for feature matching
-            need_fm = (lambda_fm_1 != 0.0) or (lambda_fm_2 != 0.0)
+            # determine if we need inputs for feature matching and/or entropy
+            need_f_fake = (lambda_fm_1 > 0) or (lambda_fm_2 > 0) or (lambda_entropy > 0)
+            need_f_real = (lambda_fm_1 > 0) or (lambda_fm_2 > 0)
             # if we need feature matching get the output in the feature space from
             # both x_real and x_fake
-            if need_fm:
+            if need_f_real:
                 _, f_real = D(x_real, c_batch, return_features=True)
+            if need_f_fake:
                 d_fake, f_fake = D(x_fake, c_batch, return_features=True)
             else:
                 d_fake = D(x_fake, c_batch)
@@ -142,6 +147,9 @@ def train_gan(
             if lambda_fm_2 > 0.0:
                 cov_pen = cov_penalty(f_fake, f_real)
                 loss_g += lambda_fm_2 * cov_pen
+            if lambda_entropy > 0.0:
+                entropy_penalty = feature_entropy(f_fake)
+                loss_g += lambda_entropy * entropy_penalty
             epoch_g_losses.append(loss_g.item())
             opt_g.zero_grad()
             loss_g.backward()
@@ -182,6 +190,7 @@ def train_wgan_gp(
     lr_D: float = 1e-4,
     lambda_fm_1: float = 0,
     lambda_fm_2: float = 0,
+    lambda_entropy: float = 0,
     batch_size: int = 64,
     epochs: int = 200,
     c: torch.Tensor | None = None,
@@ -202,10 +211,12 @@ def train_wgan_gp(
         the learning rate for G
     lr_D : float
         the learning rate for D
-    lambda_fm_1 :
+    lambda_fm_1 : float
         weight on loss/penalty to use for E(fake_features) - E(real_features)
-    lambda_fm_2 : 
+    lambda_fm_2 : float
         weight on loss/penalty to use for second moments
+    lambda_entropy : float
+        weight on loss/penalty to use for entropy in the feature space
     batch_size : int
         when the data is not already a DataLoader, the batch size to be used.
         when the data is a DataLoader, this has no effect
@@ -278,12 +289,14 @@ def train_wgan_gp(
             for param in D.parameters():
               param.requires_grad = False
             # determine if we need inputs for feature matching
-            need_fm = (lambda_fm_1 != 0.0) or (lambda_fm_2 != 0.0)
+            need_f_real = (lambda_fm_1 > 0.0) or (lambda_fm_2 > 0.0)
+            need_f_fake = (lambda_fm_1 > 0.0) or (lambda_fm_2 > 0.0) or (lambda_entropy > 0.0)
             x_fake = G.generate(B, c_batch)
             # if we need feature matching get the output in the feature space from
             # both x_real and x_fake
-            if need_fm:
+            if need_f_real:
                 _, f_real = D(x_real, c_batch, return_features=True)
+            if need_f_fake:
                 d_fake, f_fake = D(x_fake, c_batch, return_features=True)
             else:
                 d_fake = D(x_fake, c_batch)
@@ -294,6 +307,9 @@ def train_wgan_gp(
             if lambda_fm_2 > 0.0:
                 cov_pen = cov_penalty(f_fake, f_real)
                 loss_g += lambda_fm_2 * cov_pen
+            if lambda_entropy > 0.0:
+                entropy_penalty = feature_entropy(f_fake):
+                loss_g += lambda_entropy * entropy_penalty
             epoch_g_losses.append(loss_g.item())
             opt_g.zero_grad()
             loss_g.backward()

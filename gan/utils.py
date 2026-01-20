@@ -185,3 +185,25 @@ def cov_penalty(f_fake: torch.Tensor, f_real: torch.Tensor, unbiased: bool = Fal
     num_features = cov_diff_2_upper.shape[0]
     divisor = num_features * (num_features + 1) // 2
     return cov_diff_2_upper.sum() / divisor
+
+def feature_entropy(f_fake:torch.Tensor, unbiased=False, eps=1e-8):
+    """
+    computes the entropy of a sample in the feature space
+    Parameters
+    ----------
+    f_fake : torch.Tensor
+        sample in the feature space
+    unbiased : bool
+        whether to use biased or unbiased calculation for the covariance matrix
+    eps : float
+        size of term to be added for numerical stability
+    Returns
+    -------
+    torch.Tensor
+        -log (det Covariance matrix) (negative to maximize entropy)
+    """
+    feature_dim = f_fake.shape[1]
+    cov = cov_matrix(f_fake, unbiased)
+    s, logdet = torch.slogdet(cov + eps * torch.eye(feature_dim, device=f_fake.device))
+    penalty = torch.tensor(1e6, device=f_fake.device)
+    return torch.where(s > 0, -logdet, penalty)
