@@ -206,4 +206,4 @@ def feature_entropy(f_fake:torch.Tensor, unbiased=False, eps=1e-8):
     cov = cov_matrix(f_fake, unbiased)
     s, logdet = torch.slogdet(cov + eps * torch.eye(feature_dim, device=f_fake.device))
     penalty = torch.tensor(1e6, device=f_fake.device)
-    return torch.where(s > 0, -logdet, penalty)
+    return torch.where(s > 0, -logdet / feature_dim, penalty)

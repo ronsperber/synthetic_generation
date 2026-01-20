@@ -308,7 +308,7 @@ def train_wgan_gp(
                 cov_pen = cov_penalty(f_fake, f_real)
                 loss_g += lambda_fm_2 * cov_pen
             if lambda_entropy > 0.0:
-                entropy_penalty = feature_entropy(f_fake):
+                entropy_penalty = feature_entropy(f_fake)
                 loss_g += lambda_entropy * entropy_penalty
             epoch_g_losses.append(loss_g.item())
             opt_g.zero_grad()
