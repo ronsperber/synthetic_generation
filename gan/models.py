@@ -8,18 +8,17 @@ from dataclasses import dataclass
 from collections.abc import Callable
 import torch
 import torch.nn as nn
-from .activations import GumbelSoftmax
 
 # types used for the classes
 LayerDims = tuple[int, int]
 HiddenDims: TypeAlias = LayerDims | Sequence[LayerDims]
-ActivationFactory: TypeAlias = Callable[[], nn.Module]
+ActivationFactory: TypeAlias = Callable[[], nn.Module] | nn.Module
 
 # dataclass for output head info
 @dataclass
 class OutputHead:
     dim: int                     # output dimension for this head
-    activation: Callable = None  # activation function, e.g., nn.Softplus
+    activation: ActivationFactory = nn.Identity # activation function, e.g., nn.Softplus
     name: str = ""               # optional name to identify this head
 
 class Generator(nn.Module):
@@ -97,7 +96,10 @@ class Generator(nn.Module):
 
         self.noise_dim = noise_dim
         self.output_dim = out_dim
-        self.activation = hidden_activation()
+        if callable(hidden_activation) and not isinstance(hidden_activation,nn.Module):
+            self.activation = hidden_activation()
+        else:
+            self.activation = hidden_activation
         self.conditional_dim = conditional_dim if use_conditional else 0
         self.output_heads = output_heads
         self.input_layer = nn.Linear(
@@ -114,7 +116,10 @@ class Generator(nn.Module):
         self.head_activations = nn.ModuleList()
         for head in self.output_heads:
             self.head_layers.append(nn.Linear(trunk_out_dim,head.dim))
-            self.head_activations.append(head.activation())
+            if callable(head.activation) and not isinstance(head.activation, nn.Module):
+                self.head_activations.append(head.activation())
+            else:
+                self.head_activations.append(head.activation)
 
     def forward(self, z: torch.Tensor, c: torch.Tensor | None = None):
         """
@@ -235,7 +240,11 @@ class Discriminator(nn.Module):
                 )
 
         self.feature_dim = feature_dim
-        self.activation = hidden_activation()
+        # In OutputHead or wherever you instantiate
+        if isinstance(hidden_activation, nn.Module):
+            self.activation = hidden_activation
+        else:
+            self.activation = hidden_activation()  # it's a callable
         self.conditional_dim = conditional_dim if use_conditional else 0
 
         self.input_layer = nn.Linear(
