@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from collections.abc import Callable
 import torch
 import torch.nn as nn
+from .activations import GumbelSoftmax
 
 # types used for the classes
 LayerDims = tuple[int, int]
@@ -114,6 +115,7 @@ class Generator(nn.Module):
         for head in self.output_heads:
             self.head_layers.append(nn.Linear(trunk_out_dim,head.dim))
             self.head_activations.append(head.activation())
+
     def forward(self, z: torch.Tensor, c: torch.Tensor | None = None):
         """
         forward method for the network
@@ -139,6 +141,20 @@ class Generator(nn.Module):
             outputs.append(activation(layer(x)))
 
         return torch.cat(outputs, dim=1)
+
+    def set_train(self, train_flag: bool):
+        """
+        sets whether in training or for inference.
+        sets the 'hard' attribute for GumbleSoftmax
+        Parameters
+        ----------
+        train_flag : bool
+            whether the model is in training or not
+        """
+
+        for head in self.output_heads:
+            if isinstance(head.activation, GumbelSoftmax):
+                head.activation.hard = not train_flag
 
     def generate(self, num_samples: int, c: torch.Tensor | None = None):
         """
