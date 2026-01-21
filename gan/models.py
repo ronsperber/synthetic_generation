@@ -142,20 +142,6 @@ class Generator(nn.Module):
 
         return torch.cat(outputs, dim=1)
 
-    def set_train(self, train_flag: bool):
-        """
-        sets whether in training or for inference.
-        sets the 'hard' attribute for GumbleSoftmax
-        Parameters
-        ----------
-        train_flag : bool
-            whether the model is in training or not
-        """
-
-        for head in self.output_heads:
-            if isinstance(head.activation, GumbelSoftmax):
-                head.activation.hard = not train_flag
-
     def generate(self, num_samples: int, c: torch.Tensor | None = None):
         """
         method to generate a 'fake' data set
