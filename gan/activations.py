@@ -43,14 +43,9 @@ class ClampedIdentity(nn.Module):
         self.eps = eps
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        if self.min_value is not None or self.max_value is not None:
-            if self.min_value is None:
-                return torch.clamp(x, max = self.max_value + self.eps)
-            elif self.max_value is None:
-                return torch.clamp(x , min = self.min_value - self.eps)
-            else:
-                return torch.clamp(x, min=self.min_value  - self.eps, max=self.max_value + self.eps)
-        return x
+        min_val = self.min_value - self.eps if self.min_value is not None else None
+        max_val = self.max_value + self.eps if self.max_value is not None else None
+        return torch.clamp(x, min=min_val, max=max_val)
 
 class BoundedSigmoid(nn.Module):
     """
@@ -64,11 +59,15 @@ class BoundedSigmoid(nn.Module):
         return torch.sigmoid(x) * (self.max_value - self.min_value) + self.min_value
     
 class GumbelSoftmax(nn.Module):
-    def __init__(self, tau: float = 1.0, hard: bool = False, dim: int = -1):
+    def __init__(self, tau: float = 1.0, hard_inference: bool = True, dim: int = -1):
         super().__init__()
         self.tau = tau
-        self.hard = hard
+        self.hard_inference = hard_inference
         self.dim = dim
 
     def forward(self, x):
-        return F.gumbel_softmax(x, tau=self.tau, hard=self.hard, dim=self.dim)
+        if self.training:
+            hard = False
+        else:
+            hard = self.hard_inference
+        return F.gumbel_softmax(x, tau=self.tau, hard=hard, dim=self.dim)
