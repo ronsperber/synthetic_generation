@@ -62,6 +62,8 @@ def train_gan(
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     G.to(device)
     D.to(device)
+    G.train()
+    D.train()
     if loss == "bce":
         criterion = nn.BCELoss()
     elif loss == "bce_with_logits":
@@ -235,6 +237,8 @@ def train_wgan_gp(
     device = "cuda" if torch.cuda.is_available() else "cpu"
     G.to(device)
     D.to(device)
+    G.train()
+    D.train()
     # if the data is not already in a DataLoader, put it in one
     dataloader = (
         X if isinstance(X, DataLoader) else make_dataloader(X, c, batch_size=batch_size)

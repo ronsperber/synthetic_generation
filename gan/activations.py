@@ -45,7 +45,9 @@ class ClampedIdentity(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         min_val = self.min_value - self.eps if self.min_value is not None else None
         max_val = self.max_value + self.eps if self.max_value is not None else None
-        return torch.clamp(x, min=min_val, max=max_val)
+        if min_val is not None or max_val is not None:
+            return torch.clamp(x, min=min_val, max=max_val)
+        return x
 
 class BoundedSigmoid(nn.Module):
     """
