@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import pytest
-from gan.models import Generator, Discriminator, OutputHead
+from gan.models import Generator, OutputHead
 from gan.activations import GumbelSoftmax, SoftplusShift, TanhShiftScale, BoundedSigmoid, ClampedIdentity
 import torch
 import torch.nn as nn
@@ -133,7 +133,7 @@ def test_tanh_shift_scale_backward():
     assert x.grad is not None
     assert torch.isfinite(x.grad).all()
 
-# test ClamedIdentity
+# test ClampedIdentity
 
 def test_clamped_identity_no_bounds():
     act = ClampedIdentity()
