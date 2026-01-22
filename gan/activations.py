@@ -43,8 +43,12 @@ class ClampedIdentity(nn.Module):
         self.eps = eps
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        min_val = self.min_value - self.eps if self.min_value is not None else None
-        max_val = self.max_value + self.eps if self.max_value is not None else None
+        if self.training:
+            min_val = self.min_value - self.eps if self.min_value is not None else None
+            max_val = self.max_value + self.eps if self.max_value is not None else None
+        else:
+            min_val = self.min_value
+            max_val = self.max_value
         if min_val is not None or max_val is not None:
             return torch.clamp(x, min=min_val, max=max_val)
         return x
