@@ -189,6 +189,32 @@ class Generator(nn.Module):
         z = torch.randn(num_samples, self.noise_dim, device=device)
         return self.forward(z, c)
 
+    def generate_sample(self, num_samples: int, c: torch.Tensor | None = None):
+        """
+        function to generate inference samples in eval mode to use the decode on output heads
+        Parameters
+        ----------
+        num_samples : int
+            number of samples to generate
+        c : torch.Tensor | None
+            when not None conditional to use to generate the samples
+        Returns
+        -------
+        torch.Tensor
+            sample of size num_samples of sample data with post-training decode used
+        """
+        # save current training status
+        training = self.training
+        # put in eval to use decode on output heads
+        self.eval()
+        with torch.no_grad():
+            # get the output using decoders in output heads
+            output = self.generate(num_samples, c)
+        # restore training state
+        if training:
+            self.train()
+        return output
+
 
 class Discriminator(nn.Module):
     """
