@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import pytest
 from gan.models import Generator, OutputHead
-from gan.activations import GumbelSoftmax, SoftplusShift, TanhShiftScale, BoundedSigmoid, ClampedIdentity
+from gan.activations import GumbelSoftmax, SoftplusShift, TanhShiftScale, BoundedSigmoid, ClampedIdentity, RoundedClamp
 import torch
 import torch.nn as nn
 
@@ -208,6 +208,27 @@ def test_bounded_sigmoid_backward():
     assert x.grad is not None
     assert torch.isfinite(x.grad).all()
 
+# rounded clamped test
+def test_rounded_clamped_both_bounds():
+    z = torch.Tensor([-1.2, 1.3, 1.7, 2.1, 3.5])
+    clamp = RoundedClamp(min_val=0.0, max_val=2.0)
+    out = clamp.forward(z)
+    expected = torch.Tensor([0.0, 1.0, 2.0, 2.0, 2.0])
+    assert torch.allclose(out,expected)
+
+def test_rounded_clamped_left():
+    z = torch.Tensor([-3.2, -1.6, 1.0, 2.3, 7.2])
+    clamp = RoundedClamp(min_val=-2.0)
+    out = clamp.forward(z)
+    expected = torch.Tensor([-2.0, -2.0, 1.0, 2.0, 7.0])
+    assert torch.allclose(out,expected)
+
+def test_rounded_no_bounds():
+    z = torch.Tensor([-3.2, 0.3, 1.5, 7.6])
+    clamp = RoundedClamp()
+    out = clamp.forward(z)
+    expected = torch.Tensor([-3.0, 0.0, 2.0, 8.0])
+    assert torch.allclose(out, expected)
 
 # integration tests
 def test_generator_with_gumbel_softmax_head_backward():

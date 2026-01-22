@@ -65,6 +65,9 @@ class BoundedSigmoid(nn.Module):
         return torch.sigmoid(x) * (self.max_value - self.min_value) + self.min_value
     
 class GumbelSoftmax(nn.Module):
+    """
+    Gumbel Softmax defaulting to hard on inference
+    """
     def __init__(self, tau: float = 1.0, hard_inference: bool = True, dim: int = -1):
         super().__init__()
         self.tau = tau
@@ -77,3 +80,25 @@ class GumbelSoftmax(nn.Module):
         else:
             hard = self.hard_inference
         return F.gumbel_softmax(x, tau=self.tau, hard=hard, dim=self.dim)
+    
+class RoundedClamp(nn.Module):
+    """
+    class to round to nearest whole integer and then clamp if desired at extremes
+    this is only to be used for decode, not during training because of gradient issues
+    """
+    def __init__(self, min_val: float | None = None, max_val: float | None = None):
+        """
+        Parameters
+        min_val float | None
+            when not None, lower bound for clamp
+        max_val float | None
+            when not None, upper bound for clamp
+        """
+        super().__init__()
+        self.min_val = min_val
+        self.max_val = max_val
+    def forward(self, x):
+        rounded = torch.round(x)
+        if self.min_val is not None or self.max_val is not None:
+            return torch.clamp(rounded, min=self.min_val, max=self.max_val)
+        return rounded
