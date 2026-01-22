@@ -18,8 +18,8 @@ ActivationFactory: TypeAlias = Callable[[], nn.Module] | nn.Module
 @dataclass
 class OutputHead:
     dim: int                     # output dimension for this head
-    activation: ActivationFactory = nn.Identity() # activation to be applied during training
-    decode : ActivationFactory | None = None # activation to be applied for inference
+    activation: ActivationFactory = nn.Identity # activation to be applied during training
+    decode : ActivationFactory  = nn.Identity # activation to be applied for inference
     name: str = ""               # optional name to identify this head
 
 class Generator(nn.Module):
@@ -118,16 +118,14 @@ class Generator(nn.Module):
         # Output heads
         self.head_layers = nn.ModuleList()
         self.head_activations = nn.ModuleList()
-        self.head_decodes = []
+        self.head_decodes = nn.ModuleList()
         for head in self.output_heads:
             self.head_layers.append(nn.Linear(trunk_out_dim,head.dim))
             if callable(head.activation) and not isinstance(head.activation, nn.Module):
                 self.head_activations.append(head.activation())
             else:
                 self.head_activations.append(head.activation)
-            if head.decode is None:
-                self.head_decodes.append(None)
-            elif callable(head.decode) and not isinstance(head.decode, nn.Module):
+            if callable(head.decode) and not isinstance(head.decode, nn.Module):
                 self.head_decodes.append(head.decode())
             else:
                 self.head_decodes.append(head.decode)
@@ -159,10 +157,8 @@ class Generator(nn.Module):
                 outputs.append(activation(layer(x)))
         else:
             for layer, decode in zip(self.head_layers, self.head_decodes):
-                out = layer(x)
-                if decode is not None:
-                    out = decode(out)
-                outputs.append(out)
+                outputs.append(decode(layer(x)))
+
 
         return torch.cat(outputs, dim=1)
 
