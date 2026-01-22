@@ -18,7 +18,8 @@ ActivationFactory: TypeAlias = Callable[[], nn.Module] | nn.Module
 @dataclass
 class OutputHead:
     dim: int                     # output dimension for this head
-    activation: ActivationFactory = nn.Identity # activation function, e.g., nn.Softplus
+    activation: ActivationFactory = nn.Identity() # activation to be applied during training
+    decode : ActivationFactory | None = None # activation to be applied for inference
     name: str = ""               # optional name to identify this head
 
 class Generator(nn.Module):
@@ -86,6 +87,10 @@ class Generator(nn.Module):
             raise ValueError(
                 "Number of hidden layers and length of hidden_dims must be equal"
             )
+        # validate that all hidden dims are ordered pairs
+        for i, h in enumerate(hidden_dims):
+            if not (isinstance(h, tuple) and len(h) == 2):
+                raise ValueError(f"hidden_dims[{i} must be a tuple (in_dim, out_dim), got {h}]")
         # validate that output dimension of a layer matches input dimension of next
         for i in range(len(hidden_dims) - 1):
             if hidden_dims[i][1] != hidden_dims[i + 1][0]:
@@ -93,7 +98,6 @@ class Generator(nn.Module):
                     f"hidden_dims[{i}][1] ({hidden_dims[i][1]}) "
                     f"!= hidden_dims[{i + 1}][0] ({hidden_dims[i + 1][0]})"
                 )
-
         self.noise_dim = noise_dim
         self.output_dim = out_dim
         if callable(hidden_activation) and not isinstance(hidden_activation,nn.Module):
@@ -114,12 +118,20 @@ class Generator(nn.Module):
         # Output heads
         self.head_layers = nn.ModuleList()
         self.head_activations = nn.ModuleList()
+        self.head_decodes = []
         for head in self.output_heads:
             self.head_layers.append(nn.Linear(trunk_out_dim,head.dim))
             if callable(head.activation) and not isinstance(head.activation, nn.Module):
                 self.head_activations.append(head.activation())
             else:
                 self.head_activations.append(head.activation)
+            if head.decode is None:
+                self.head_decodes.append(None)
+            elif callable(head.decode) and not isinstance(head.decode, nn.Module):
+                self.head_decodes.append(head.decode())
+            else:
+                self.head_decodes.append(head.decode)
+
 
     def forward(self, z: torch.Tensor, c: torch.Tensor | None = None):
         """
@@ -142,8 +154,15 @@ class Generator(nn.Module):
             x = self.activation(layer(x))
 
         outputs = []
-        for layer, activation in zip(self.head_layers, self.head_activations):
-            outputs.append(activation(layer(x)))
+        if self.training:
+            for layer, activation in zip(self.head_layers, self.head_activations):
+                outputs.append(activation(layer(x)))
+        else:
+            for layer, decode in zip(self.head_layers, self.head_decodes):
+                out = layer(x)
+                if decode is not None:
+                    out = decode(out)
+                outputs.append(out)
 
         return torch.cat(outputs, dim=1)
 
@@ -240,11 +259,10 @@ class Discriminator(nn.Module):
                 )
 
         self.feature_dim = feature_dim
-        # In OutputHead or wherever you instantiate
         if isinstance(hidden_activation, nn.Module):
             self.activation = hidden_activation
         else:
-            self.activation = hidden_activation()  # it's a callable
+            self.activation = hidden_activation()  
         self.conditional_dim = conditional_dim if use_conditional else 0
 
         self.input_layer = nn.Linear(
