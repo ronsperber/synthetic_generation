@@ -25,7 +25,8 @@ def train_gan(
     batch_size: int = 64,
     epochs: int = 200,
     c: torch.Tensor | None = None,
-    save_path: str | None = None
+    save_path: str | None = None,
+    return_history: bool = True
 ):
     """
     Function to train a GAN
@@ -64,6 +65,9 @@ def train_gan(
     D.to(device)
     G.train()
     D.train()
+    if return_history:
+        G_losses = []
+        D_losses = []
     if loss == "bce":
         criterion = nn.BCELoss()
     elif loss == "bce_with_logits":
@@ -90,7 +94,7 @@ def train_gan(
     opt_g = torch.optim.Adam(G.parameters(), lr=lr_G, betas=(0.5, 0.999))
     opt_d = torch.optim.Adam(D.parameters(), lr=lr_D, betas=(0.5, 0.999))
     pbar = tqdm(range(1, epochs+1), desc = "GAN training")
-    for _ in pbar:
+    for epoch in pbar:
         epoch_d_losses = []
         epoch_g_losses = []
         for batch in dataloader:
@@ -159,6 +163,9 @@ def train_gan(
             # Unfreeze D parameters
             for param in D.parameters():
                param.requires_grad = True    
+        if return_history:
+            D_losses.append((epoch, np.mean(epoch_d_losses)))
+            G_losses.append((epoch, np.mean(epoch_g_losses)))
         pbar.set_postfix(
             {"D": f"{np.mean(epoch_d_losses):.4f}", "G": f"{np.mean(epoch_g_losses):.4f}"}
 
@@ -182,6 +189,8 @@ def train_gan(
             "G_state_dict": G.state_dict(),
             "D_state_dict": D.state_dict()
         }, save_path)
+    if return_history:
+        return G_losses, D_losses
 
 
 def train_wgan_gp(
@@ -198,7 +207,8 @@ def train_wgan_gp(
     c: torch.Tensor | None = None,
     n_critic: int = 5,
     lambda_gp: float = 10.0,
-    save_path : str | None = None
+    save_path : str | None = None,
+    return_history : bool = True
 ):
     """
     Function to train a WGAN-GP
@@ -232,6 +242,8 @@ def train_wgan_gp(
         lambda used for the gradient penalty
     save_path : str | None:
         when not None, the path to save model information
+    return_history : bool
+        whether or not to return the history of losses over training
     
     """
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -239,6 +251,9 @@ def train_wgan_gp(
     D.to(device)
     G.train()
     D.train()
+    if return_history:
+        G_losses = []
+        D_losses = []
     # if the data is not already in a DataLoader, put it in one
     dataloader = (
         X if isinstance(X, DataLoader) else make_dataloader(X, c, batch_size=batch_size)
@@ -254,7 +269,7 @@ def train_wgan_gp(
     opt_g = torch.optim.Adam(G.parameters(), lr=lr_G, betas=(0.0, 0.9))
     opt_d = torch.optim.Adam(D.parameters(), lr=lr_D, betas=(0.0, 0.9))
     pbar = tqdm(range(1, epochs+1), desc = "WGAN-GP training")
-    for _ in pbar:
+    for epoch in pbar:
         epoch_d_losses = []
         epoch_g_losses = []
         for batch in dataloader:
@@ -321,6 +336,9 @@ def train_wgan_gp(
             # Unfreeze D parameters
             for param in D.parameters():
                param.requires_grad = True
+        if return_history:
+            D_losses.append((epoch, np.mean(epoch_d_losses)))
+            G_losses.append((epoch, np.mean(epoch_g_losses)))
         pbar.set_postfix(
             {"D": f"{np.mean(epoch_d_losses):.4f}", "G": f"{np.mean(epoch_g_losses):.4f}"}
         )
@@ -346,3 +364,5 @@ def train_wgan_gp(
                 "D_state_dict":D.state_dict()
             },save_path
         )
+    if return_history:
+        return G_losses, D_losses
