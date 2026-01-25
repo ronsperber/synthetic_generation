@@ -15,13 +15,15 @@ This is not an image-focused GAN framework.
 
 - `gan/models.py`  
   Contains classes for a **Generator** and **Discriminator (or Critic)**.  
-  These are fully connected feed-forward networks built from linear layers and nonlinear activation functions, with optional conditional inputs. There is also an OutputHead dataclass with dims, activation, and name.
+  These are fully connected feed-forward networks built from linear layers and nonlinear activation functions, with optional conditional inputs. There is also an OutputHead dataclass with dims, activation, decode, and name.
+  For the output head, `activation` is used during training, and `decode` used at inference.
   The `Generator` exposes a `.generate()` method that handles noise sampling and device placement automatically
 
 - `gan/training.py`  
   Contains training loops for:
   - standard GANs (`train_gan`)
   - WGAN-GP (`train_wgan_gp`)
+  These both return loss histories for the G and D by default, and it can be turned off with `return_history=False`
 
 - `gan/utils.py`  
   Utility functions, including:
@@ -86,14 +88,14 @@ D = Discriminator(
 )
 
 # train the models
-train_gan(
+G_history, D_history = train_gan(
     X=X_torch,
     G=G,
     D=D
 )
 
 # create a fake data set
-X_fake = G.generate(10000)
+X_fake = G.generate_sample(10000)
 ```
 ### Training a conditional GAN
 The data is as we saw in the previous example (`X, centers, labels`)
@@ -127,7 +129,7 @@ D_cond = Discriminator(
     conditional_dim=conditional_dim
 )
 
-train_gan(
+G_hist, D_hist = train_gan(
     X=X_torch,
     G=G_cond,
     D=D_cond,
@@ -135,11 +137,11 @@ train_gan(
 )
 
 # generate fake data from this
-X_fake_cond = G_cond.generate(20000, c)
+X_fake_cond = G_cond.generate_samples(20000, c)
 ```
 To save the results of training, add a `save_path` argument, e.g.
 ```python
-train_gan(
+G_hist, D_hist = train_gan(
   X=X_torch,
   G=G_cond,
   D=D_cond,
@@ -168,7 +170,7 @@ To do this we will need a custom output head
 ```python
 import torch.nn as nn
 from gan.models import OutputHead
-heads = [OutputHead(dim=2,activation=nn.Tanh,name="scaled_output")]
+heads = [OutputHead(dim=2,activation=nn.Tanh, decode=nn.Tanh, name="scaled_output")]
 G = Generator(
     noise_dim=2,
     num_hidden_layers=2,
