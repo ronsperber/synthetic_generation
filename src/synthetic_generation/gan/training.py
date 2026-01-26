@@ -9,7 +9,8 @@ import numpy as np
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 from .models import Generator, Discriminator
-from .utils import make_dataloader, gradient_penalty, cov_penalty, feature_entropy
+from .utils import gradient_penalty, cov_penalty, feature_entropy
+from synthetic_generation.data_utils import make_dataloader
 
 
 def train_gan(
@@ -59,6 +60,8 @@ def train_gan(
         for conditional GAN, the conditional
     save_path: str | None
         when not None, where to save information about the models
+    return_history : boolean
+        whether or not to return the history of losses
     """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     G.to(device)
