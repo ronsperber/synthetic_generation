@@ -100,14 +100,14 @@ class DiffusionNet(BaseMLP):
         if  not hasattr(embedding, 'embed_dim'):
             raise AttributeError(
                 f"Time embedding {type(embedding).__name__} must have 'embed_dim' attribute"
-            )
-        self.embedding = embedding
+            )       
         self.embed_dim = embedding.embed_dim
         super().__init__(input_dim=data_dim + self.embed_dim,
                          output_dim=data_dim,
                          hidden_dims=hidden_dims,
                          num_hidden_layers=num_hidden_layers,
                          activation=activation)
+        self.embedding = embedding
         
 
     def forward(self, x_t: torch.Tensor, t: torch.Tensor):
