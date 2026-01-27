@@ -1,4 +1,4 @@
-# GANs for Synthetic Data Generation
+# Synthetic Data Generation
 
 This repository contains implementations of:
 - vanilla GANs
@@ -7,30 +7,33 @@ This repository contains implementations of:
 - conditional WGAN-GP
 
 The focus is on **synthetic data generation for low-dimensional or tabular datasets**, using fully connected neural networks.  
-This is not an image-focused GAN framework.
 
 ---
 
 ## Repository Structure
 
-- `gan/models.py`  
+- `src/synthetic_generation/gan/models.py`  
   Contains classes for a **Generator** and **Discriminator (or Critic)**.  
   These are fully connected feed-forward networks built from linear layers and nonlinear activation functions, with optional conditional inputs. There is also an OutputHead dataclass with dims, activation, decode, and name.
   For the output head, `activation` is used during training, and `decode` used at inference.
   The `Generator` exposes a `.generate()` method that handles noise sampling and device placement automatically
 
-- `gan/training.py`  
+- `src/synthetic_generation/gan/training.py`  
   Contains training loops for:
   - standard GANs (`train_gan`)
   - WGAN-GP (`train_wgan_gp`)
   These both return loss histories for the G and D by default, and it can be turned off with `return_history=False`
 
-- `gan/utils.py`  
-  Utility functions, including:
-  - `make_dataloader` for wrapping tensors into a `DataLoader`
+- `src/synthetic_generation/gan/utils.py`  
+  GAN/WGAN-GP utility functions, including:
   - `gradient_penalty` for WGAN-GP
   - `cov_matrix` and `cov_penalty` for use for feature matching penalties
   - `load_gan_checkpoint` to load a saved model
+
+- `src/synthetic_generation/data_utils.py`
+General data utilities, including :
+- `make_dataloader` to take a data set or data set + conditional and turn into a data loader
+
 
 - `Notebooks`   
   Sample notebooks illustrating
@@ -62,8 +65,8 @@ pip install -e .
 # load libraries
 from sklearn.datasets import make_blobs
 import torch
-from gan.models import Generator, Discriminator
-from gan.training import train_gan
+from synthetic_generation.gan.models import Generator, Discriminator
+from synthetic_generation.gan.training import train_gan
 
 # create a toy dataset
 X, labels, centers = make_blobs(
@@ -107,7 +110,7 @@ one_hot = torch.nn.functional.one_hot(torch.tensor(labels), num_classes=3).float
 # assign each sample its cluster center
 centers_per_sample = torch.tensor(centers)[labels]
 # combine the centers with encoded labels
-c = torch.cat([torch.tensor(center_per_sample), one_hot], dim=1)
+c = torch.cat([torch.tensor(centers_per_sample), one_hot], dim=1)
 # get the number of conditional dimensions
 conditional_dim = c.shape[1]
 
@@ -152,7 +155,7 @@ G_hist, D_hist = train_gan(
 
 To then load the model, we use the `load_gan_checkpoint` as follows
 ```python
-from gan.utils import load_gan_checkpoint
+from synthetic_generation.gan.utils import load_gan_checkpoint
 G,D,configs = load_gan_checkpoint(
   path = 'cond_gan.pt'
 )
@@ -169,7 +172,7 @@ For best results, it is recommended to:
 To do this we will need a custom output head
 ```python
 import torch.nn as nn
-from gan.models import OutputHead
+from synthetic_generation.gan.models import OutputHead
 heads = [OutputHead(dim=2,activation=nn.Tanh, decode=nn.Tanh, name="scaled_output")]
 G = Generator(
     noise_dim=2,

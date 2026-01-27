@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
 import pytest
-from gan.models import Generator, OutputHead  
-from gan.activations import GumbelSoftmax
+from synthetic_generation.gan.models import Generator, OutputHead  
+from synthetic_generation.gan.activations import GumbelSoftmax
 def test_decode_forward():
     # Simple generator with one head
     head = OutputHead(dim=1, activation=nn.Identity, decode=nn.Sigmoid, name="test_head")

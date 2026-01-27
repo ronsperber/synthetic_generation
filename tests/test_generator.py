@@ -1,7 +1,7 @@
 import pytest
 import torch
 import torch.nn as nn
-from gan.models import Generator, OutputHead
+from synthetic_generation.gan.models import Generator, OutputHead
 
 def test_generator_single_output():
     torch.manual_seed(42)

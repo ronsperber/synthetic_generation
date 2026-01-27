@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
 import pytest
-from gan.models import Generator, OutputHead
-from gan.activations import GumbelSoftmax, SoftplusShift, TanhShiftScale, BoundedSigmoid, ClampedIdentity, RoundedClamp
+from synthetic_generation.gan.models import Generator, OutputHead
+from synthetic_generation.gan.activations import GumbelSoftmax, SoftplusShift, TanhShiftScale, BoundedSigmoid, ClampedIdentity, RoundedClamp
 import torch
 import torch.nn as nn
 
@@ -250,8 +250,6 @@ def test_generator_with_gumbel_softmax_head_backward():
     assert any(g is not None for g in grads), "Gradients should flow through generator"
 
 def test_generator_with_custom_activation_backward():
-    from gan.models import Generator
-    from gan.activations import TanhShiftScale
 
     G = Generator(
         noise_dim=5,

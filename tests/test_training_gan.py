@@ -1,7 +1,7 @@
 import pytest
 import torch
-from gan.training import train_gan
-from gan.models import Generator, Discriminator
+from synthetic_generation.gan.training import train_gan
+from synthetic_generation.gan.models import Generator, Discriminator
 
 def test_dimension_mismatch_output_feature():
     G = Generator(noise_dim=20, num_hidden_layers=2, out_dim=10, hidden_dims=(32, 32))

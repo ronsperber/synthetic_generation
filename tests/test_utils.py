@@ -1,5 +1,5 @@
 import torch
-from gan.utils import cov_matrix, cov_penalty
+from synthetic_generation.gan.utils import cov_matrix, cov_penalty
 
 def test_cov_matrix_and_penalty():
     f_real = torch.tensor([[1.0, 2.0],

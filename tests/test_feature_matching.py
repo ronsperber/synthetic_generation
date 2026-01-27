@@ -1,8 +1,8 @@
 import copy
 import torch
-from gan.models import Generator, Discriminator
-from gan.training import train_gan, train_wgan_gp
-from gan.utils import make_dataloader
+from synthetic_generation.gan.models import Generator, Discriminator
+from synthetic_generation.gan.training import train_gan, train_wgan_gp
+from synthetic_generation.data_utils import make_dataloader
 
 def test_feature_matching_changes_generator_GAN():
     X = torch.rand(64, 4)

@@ -1,7 +1,7 @@
 import pytest
 import torch
 from torch.utils.data import DataLoader, TensorDataset
-from gan.models import Generator, Discriminator
+from synthetic_generation.gan.models import Generator, Discriminator
 
 @pytest.fixture
 def sample_data():

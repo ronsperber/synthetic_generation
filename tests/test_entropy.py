@@ -1,8 +1,9 @@
 import copy
 import torch
-from gan.utils import feature_entropy, make_dataloader
-from gan.models import Generator, Discriminator
-from gan.training import train_gan
+from synthetic_generation.gan.utils import feature_entropy
+from synthetic_generation.data_utils import make_dataloader
+from synthetic_generation.gan.models import Generator, Discriminator
+from synthetic_generation.gan.training import train_gan
 
 def test_feature_entropy_scalar_and_finite():
     f_fake = torch.randn(32, 8)

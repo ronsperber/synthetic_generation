@@ -1,7 +1,7 @@
 import pytest
 import torch
-from gan.training import train_wgan_gp
-from gan.models import Generator, Discriminator
+from synthetic_generation.gan.training import train_wgan_gp
+from synthetic_generation.gan.models import Generator, Discriminator
 
 def test_train_wgan_gp_parameter_updates(models, sample_data):
     G, D = models
