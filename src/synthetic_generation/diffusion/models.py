@@ -55,7 +55,7 @@ class MLPTimeEmbedding(nn.Module):
     ):
         super().__init__()
         self.num_hidden_layers = num_hidden_layers
-        if isinstance(activation, nn.Module):
+        if callable(activation) and not isinstance(activation,nn.Module):
             self.activation = activation()
         else:
             self.activation = activation
@@ -103,7 +103,7 @@ class DiffusionNet(nn.Module):
             hidden_dims = [hidden_dims] * num_hidden_layers
         self.hidden_dims = hidden_dims
         self.hidden_layers=nn.ModuleList()
-        if isinstance(activation, nn.Module):
+        if callable(activation) and not isinstance(activation,nn.Module):
             self.activation = activation()
         else:
             self.activation = activation
