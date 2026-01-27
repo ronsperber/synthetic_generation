@@ -1,9 +1,16 @@
 """
 module with model classes to use for diffusion
 """
+from typing import Sequence, TypeAlias, List
+from collections.abc import Callable
 import torch
 import torch.nn as nn
 import math
+# types used for the classes
+LayerDims = tuple[int, int]
+HiddenDims: TypeAlias = LayerDims | Sequence[LayerDims]
+ActivationFactory: TypeAlias = Callable[[], nn.Module] | nn.Module
+
 
 class SinusoidalTimeEmbedding(nn.Module):
     """
@@ -41,8 +48,8 @@ class MLPTimeEmbedding(nn.Module):
     def __init__(
             self,
             num_hidden_layers: int = 2,
-            activation: nn.Module | callable= nn.ReLU,
-            hidden_dims: tuple | list = (128,128),
+            activation: ActivationFactory = nn.ReLU,
+            hidden_dims: HiddenDims = (128,128),
             embed_dim: int = 32,
             num_time_steps: int = 1000
     ):
@@ -86,8 +93,8 @@ class DiffusionNet(nn.Module):
             data_dim : int, 
             embedding: nn.Module | None = None,
             num_hidden_layers : int = 2,
-            hidden_dims: tuple | list = (128, 128),
-            activation : nn.Module | callable= nn.ReLU,
+            hidden_dims: HiddenDims = (128, 128),
+            activation : ActivationFactory = nn.ReLU,
     ):  
         super().__init__()
         self.data_dim = data_dim
