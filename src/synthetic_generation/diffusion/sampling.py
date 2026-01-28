@@ -1,10 +1,10 @@
 import torch
-from .models import BaseMLP
+import torch.nn as nn
 def q_sample(
         x0: torch.Tensor, 
+        t: torch.Tensor,
         sqrt_alphas_cumprod: torch.Tensor,
         sqrt_one_minus_alphas_cumprod: torch.Tensor,
-        t: torch.Tensor,
         noise=None
         ):
     """
@@ -20,12 +20,14 @@ def q_sample(
 
 @torch.no_grad()
 def p_sample(
-    model:BaseMLP,
+    model:nn.Module,
     x_t: torch.Tensor,
-    t: torch.Tensor,
+    t: int,
     betas: torch.Tensor,
     alphas: torch.Tensor,
-    alphas_cumprod: torch.Tensor):
+    alphas_cumprod: torch.Tensor,
+    c: torch.Tensor | None = None
+):
     """
     Sample x_{t-1} from x_t
     """
@@ -33,7 +35,7 @@ def p_sample(
     alpha_t = alphas[t]
     alpha_bar_t = alphas_cumprod[t]
 
-    eps_theta = model(x_t, torch.full((x_t.size(0),), t, device=x_t.device))
+    eps_theta = model(x_t, torch.full((x_t.size(0),), t, device=x_t.device), c)
     mean = (1 / torch.sqrt(alpha_t)) * (
         x_t - beta_t / torch.sqrt(1 - alpha_bar_t) * eps_theta
     )

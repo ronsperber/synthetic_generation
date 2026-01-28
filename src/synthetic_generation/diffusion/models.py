@@ -110,9 +110,15 @@ class MLPTimeEmbedding(BaseMLP):
         return self.forward_layers(t)
 
 class DiffusionNet(BaseMLP):
-    def __init__(self, data_dim: int, embedding: nn.Module | None = None,
-                 num_hidden_layers: int = 2, hidden_dims: HiddenDims = (128,128),
-                 activation: ActivationFactory = nn.ReLU):
+    def __init__(
+            self,
+            data_dim: int,
+            conditional_dim: int = 0,
+            embedding: nn.Module | None = None,
+            num_hidden_layers: int = 2,
+            hidden_dims: HiddenDims = (128,128),
+            activation: ActivationFactory = nn.ReLU
+            ):
         if embedding is None:
             embedding = MLPTimeEmbedding()
         if  not hasattr(embedding, 'embed_dim'):
@@ -120,7 +126,8 @@ class DiffusionNet(BaseMLP):
                 f"Time embedding {type(embedding).__name__} must have 'embed_dim' attribute"
             )       
         self.embed_dim = embedding.embed_dim
-        super().__init__(input_dim=data_dim + self.embed_dim,
+        self.conditional_dim = conditional_dim
+        super().__init__(input_dim=data_dim + self.embed_dim + self.conditional_dim,
                          output_dim=data_dim,
                          hidden_dims=hidden_dims,
                          num_hidden_layers=num_hidden_layers,
@@ -128,11 +135,18 @@ class DiffusionNet(BaseMLP):
         self.embedding = embedding
         
 
-    def forward(self, x_t: torch.Tensor, t: torch.Tensor):
+    def forward(self, x_t: torch.Tensor, t: torch.Tensor, c: torch.Tensor | None = None):
         if t.dim() > 1:
             raise ValueError("time input should be 1 dimensional")
         t_embed = self.embedding(t)
-        x = torch.cat([x_t, t_embed], dim=1)
+        if self.conditional_dim > 0:
+            if c is None:
+                raise ValueError("Condtional dimension is > 0 , but no condtional was passed")
+            if c.shape[0] != x_t.shape[0]:
+                raise ValueError("Conditional tensor must have same batch size as x_t")
+            x = torch.cat([x_t, t_embed, c], dim=1)
+        else:
+            x = torch.cat([x_t, t_embed], dim=1)
         return self.forward_layers(x)
 
 
