@@ -63,6 +63,24 @@ class BaseMLP(nn.Module):
             hidden_dims = [hidden_dims] * max(1, num_hidden_layers)
         self.hidden_dims = hidden_dims
         self.num_hidden_layers = num_hidden_layers
+        # validate hidden layer dimensions when there are hidden layers
+        if self.num_hidden_layers > 0:
+            # validate that number of pairs is number of layers
+            if len(self.hidden_dims) != self.num_hidden_layers:
+                raise ValueError(
+                    "Number of hidden layers and length of hidden_dims must be equal"
+                )
+            # validate that each hidden dim is a tuple (in_dim, out_dim)
+            for i, h in enumerate(self.hidden_dims):
+                if not (isinstance(h, tuple) and len(h) == 2):
+                    raise ValueError(f"hidden_dims[{i} must be a tuple (in_dim, out_dim), got {h}]")
+            # validate that output dimension of a layer matches input dimension of next
+            for i in range(len(self.hidden_dims) - 1):
+                if self.hidden_dims[i][1] != self.hidden_dims[i + 1][0]:
+                    raise ValueError(
+                        f"hidden_dims[{i}][1] ({self.hidden_dims[i][1]}) "
+                        f"!= hidden_dims[{i + 1}][0] ({self.hidden_dims[i + 1][0]})"
+                        )
 
         # Input/output dims for the first/last layers
         self.input_outdim = hidden_dims[0][0] 
