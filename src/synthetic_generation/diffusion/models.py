@@ -22,12 +22,12 @@ class SinusoidalTimeEmbedding(nn.Module):
     """
     simple sinusoidal embedding
     """
-    def __init__(self, embed_dim: int):
+    def __init__(self, embedding_dim: int):
         super().__init__()
-        embed_dim = int(embed_dim)
-        if embed_dim % 2 != 0:
+        embedding_dim = int(embedding_dim)
+        if embedding_dim % 2 != 0:
             raise ValueError("Embedding dimension for sinusoidal embedding must be even")
-        self.embed_dim = embed_dim
+        self.embedding_dim = embedding_dim
     
     def forward(self, t: torch.Tensor):
         """
@@ -38,9 +38,9 @@ class SinusoidalTimeEmbedding(nn.Module):
         Returns
         --------
         embeddings: torch.Tensor
-            (batch_size, embed_dim) tensor
+            (batch_size, embedding_dim) tensor
         """
-        half_dim = self.embed_dim // 2
+        half_dim = self.embedding_dim // 2
         # Create frequencies: 1, 1/10, 1/100, 1/1000, ...
         t = t.float()
         embeddings = math.log(10000) / (half_dim - 1)
@@ -143,14 +143,14 @@ class MLPTimeEmbedding(BaseMLP):
     """
     def __init__(
             self,
-            embed_dim: int = 32,
+            embedding_dim: int = 32,
             num_hidden_layers:int = 2, 
             hidden_dims:HiddenDims = (128,128),
             activation:ActivationFactory = nn.ReLU,
-            num_time_steps:int = 1000):
+            num_timesteps:int = 1000):
         """
         Parameters
-        embed_dim : int
+        embedding_dim : int
             the dimension of the space to embed t
         num_hidden_layers: int
             number of hidden layers
@@ -158,18 +158,18 @@ class MLPTimeEmbedding(BaseMLP):
             dimensions to use for the hidden layers
         activation : ActivationFactory
             activation function for layers other than output layer
-        num_time_steps: int
+        num_timesteps: int
             number of time steps possible for t
         """
         super().__init__(
             input_dim=1,
-            output_dim=embed_dim,
+            output_dim=embedding_dim,
             hidden_dims=hidden_dims,
             num_hidden_layers=num_hidden_layers,
             activation=activation
             )
-        self.num_time_steps = num_time_steps
-        self.embed_dim = embed_dim
+        self.num_timesteps = num_timesteps
+        self.embedding_dim = embedding_dim
     def forward(self, t: torch.Tensor) -> torch.Tensor:
         """
         forward method
@@ -182,7 +182,7 @@ class MLPTimeEmbedding(BaseMLP):
         torch.Tensor
             embedded time step tensor
         """
-        t = t.unsqueeze(-1).float() / (self.num_time_steps - 1)
+        t = t.unsqueeze(-1).float() / (self.num_timesteps - 1)
         return self.forward_layers(t)
 
 class DiffusionNet(BaseMLP):
@@ -196,7 +196,8 @@ class DiffusionNet(BaseMLP):
             embedding: nn.Module | None = None,
             num_hidden_layers: int = 2,
             hidden_dims: HiddenDims = (128,128),
-            activation: ActivationFactory = nn.ReLU
+            activation: ActivationFactory = nn.ReLU,
+            embedding_dim : int | None = None
             ):
         """
         Parameters
@@ -213,20 +214,27 @@ class DiffusionNet(BaseMLP):
             dimensions for hidden layers post embedding
         activation: ActivationFactory
             activation to be used post embedding
+        embedding_dim: int | None
+            when the embedding module has no embedding_dim attribute, used for dimension of embedding
+            ignored if embedding has the attribute
         """
         # if no embedding is specified, use default MLP Time embedding
         if embedding is None:
             embedding = MLPTimeEmbedding()
-        # make sure the embedding has an embed_dim attribute needed to know dimension of time embedding
-        if  not hasattr(embedding, 'embed_dim'):
+        # make sure the embedding has an embedding_dim attribute needed to know dimension of time embedding
+        if  hasattr(embedding, 'embedding_dim'):
+            self.embedding_dim = embedding.embedding_dim
+        elif embedding_dim is not None:
+            self.embedding_dim = embedding_dim
+        else:
             raise AttributeError(
-                f"Time embedding {type(embedding).__name__} must have 'embed_dim' attribute"
+                f"Time embedding {type(embedding).__name__} must have 'embedding_dim' attribute "
+                " or embedding_dim must be specified."
             )       
-        self.embed_dim = embedding.embed_dim
         self.conditional_dim = conditional_dim
         self.data_dim = data_dim
-        # create the network with data_dim + embed_dim + conditional_dim inputs
-        super().__init__(input_dim=data_dim + self.embed_dim + self.conditional_dim,
+        # create the network with data_dim + embedding_dim + conditional_dim inputs
+        super().__init__(input_dim=data_dim + self.embedding_dim + self.conditional_dim,
                          output_dim=data_dim,
                          hidden_dims=hidden_dims,
                          num_hidden_layers=num_hidden_layers,
@@ -261,7 +269,7 @@ class DiffusionNet(BaseMLP):
         # verify that c is correct when the conditional dimension is > 0 
         if self.conditional_dim > 0:
             if c is None:
-                raise ValueError("Condtional dimension is > 0 , but no condtional was passed")
+                raise ValueError("Conditional dimension is > 0 , but no conditional was passed")
             if c.shape[0] != x_t.shape[0]:
                 raise ValueError("Conditional tensor must have same batch size as x_t")
             x = torch.cat([x_t, t_embed, c], dim=1)
@@ -278,8 +286,8 @@ class DiffusionProcess:
             model : nn.Module,
             num_timesteps: int = 1000,
             beta_schedule : str= "linear",
-            beta_start: float = 0.0,
-            beta_end: float = 0.2,
+            beta_start: float = 1e-4,
+            beta_end: float = 0.02,
             data_dim: int | None = None
     ):
         """
@@ -306,9 +314,10 @@ class DiffusionProcess:
             if data_dim is not None:
                 self.data_dim = data_dim
             else:
-                raise ValueError(
-                    "Either the model must have a data_dim or you must set one yourself"
-                )
+                raise AttributeError(
+                    f"Model {type(model).__name__} must have 'data_dim' attribute "
+                    " or data_dim must be specified."
+            )     
         self.device = next(model.parameters()).device
         self.num_timesteps = num_timesteps
         self.beta_start = beta_start
@@ -334,7 +343,7 @@ class DiffusionProcess:
         self.alphas_cumprod = self.alphas_cumprod.to(self.device)
         self.sqrt_alphas_cumprod = self.sqrt_alphas_cumprod.to(self.device)
         self.sqrt_one_minus_alphas_cumprod = self.sqrt_one_minus_alphas_cumprod.to(self.device)
-    # TO DO : Document below, add _cosine_beta_schedule
+
     def train(
             self,
             X : torch.Tensor | DataLoader,
@@ -343,6 +352,22 @@ class DiffusionProcess:
             batch_size: int = 512,
             lr: float = 1e-4
     ):
+        """
+        method to train self.model on dataset X
+        Parameters
+        ----------
+        X : torch.Tensor | DataLoader
+            dataset to learn to synthesize
+        c : torch.Tensor | None
+            optional conditional Tensor
+        epochs: int
+            number of epochs to train
+        batch_size : int
+            batch size to use for DataLoader. 
+            if DataLoader is passed, this is ignored
+        lr: float
+            learning rate to use while training
+        """
         if epochs <= 0:
             raise ValueError("Number of epochs must be positive")
         if isinstance(X, torch.Tensor):
@@ -371,7 +396,7 @@ class DiffusionProcess:
                 t = torch.randint(0, self.num_timesteps, (X_batch.size(0),), device=self.device)
                 x_t, noise = q_sample(
                     x0=X_batch,
-                    sqrt_alphas_cumprod=self.sqrt_one_minus_alphas_cumprod,
+                    sqrt_alphas_cumprod=self.sqrt_alphas_cumprod,
                     sqrt_one_minus_alphas_cumprod=self.sqrt_one_minus_alphas_cumprod,
                     t=t
                 )
@@ -385,12 +410,25 @@ class DiffusionProcess:
             pbar.set_postfix({"Loss" : f"{epoch_loss:.4f}"})
         pbar.close()
 
-    @torch.no_grad
+    @torch.no_grad()
     def generate_samples(
             self,
             num_samples : int,
             c : torch.Tensor | None = None
-    ):
+    ) -> torch.Tensor:
+        """
+        method to use on trained model to generate new samples
+        Parameters
+        ----------
+        num_samples : int
+            number of samples to generate
+        c: torch.Tensor | None
+            optional conditional tensor
+        Returns
+        -------
+        x_t : torch.Tensor
+            generated sample after going backwards from t = num_timesteps -> 0
+        """
         if c is not None:
             if c.shape[0] != num_samples:
                 raise ValueError(
@@ -398,8 +436,10 @@ class DiffusionProcess:
                     )
         # generate noise
         x_t= torch.randn(num_samples, self.data_dim, device=self.device)
+        # go backwards one timestep at a time to denoise
         for t in reversed(range(self.num_timesteps)):
             x_t = p_sample(
+                model=self.model,
                 x_t = x_t,
                 t=t,
                 betas=self.betas,
@@ -408,4 +448,40 @@ class DiffusionProcess:
                 c=c
             )
         return x_t.cpu()
+ 
+    def _cosine_beta_schedule(
+            self,
+            timesteps: int,
+            s: float=0.008
+            )->torch.Tensor:
+        """
+        Cosine beta schedule as proposed in Improved DDPM.
+    
+        Creates a smoother noise schedule than linear, which can help
+        preserve variance and improve sample quality.
+    
+        Parameters
+        ----------
+        timesteps : int
+            Number of diffusion timesteps
+        s : float, optional
+            Small offset to prevent beta from being too small near t=0.
+            Controls the steepness of the schedule. Default: 0.008 (from paper)
+    
+        Returns
+        -------
+        betas : torch.Tensor
+            Beta values for each timestep, clipped to [0.0001, 0.9999]
+    
+        References
+        ----------
+        Nichol & Dhariwal (2021): Improved Denoising Diffusion Probabilistic Models
+        https://arxiv.org/abs/2102.09672
+        """
 
+        steps = timesteps + 1
+        x = torch.linspace(0, timesteps, steps)
+        alphas_cumprod = torch.cos(((x / timesteps) + s) / (1 + s) * torch.pi * 0.5) ** 2
+        alphas_cumprod = alphas_cumprod / alphas_cumprod[0]
+        betas = 1 - (alphas_cumprod[1:] / alphas_cumprod[:-1])
+        return torch.clip(betas, 0.0001, 0.9999)
