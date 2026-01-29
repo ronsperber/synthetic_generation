@@ -454,39 +454,4 @@ class DiffusionProcess:
         
         return x_t.cpu()
  
-    def _cosine_beta_schedule(
-            self,
-            timesteps: int,
-            s: float=0.008
-            )->torch.Tensor:
-        """
-        Cosine beta schedule as proposed in Improved DDPM.
     
-        Creates a smoother noise schedule than linear, which can help
-        preserve variance and improve sample quality.
-    
-        Parameters
-        ----------
-        timesteps : int
-            Number of diffusion timesteps
-        s : float, optional
-            Small offset to prevent beta from being too small near t=0.
-            Controls the steepness of the schedule. Default: 0.008 (from paper)
-    
-        Returns
-        -------
-        betas : torch.Tensor
-            Beta values for each timestep, clipped to [0.0001, 0.9999]
-    
-        References
-        ----------
-        Nichol & Dhariwal (2021): Improved Denoising Diffusion Probabilistic Models
-        https://arxiv.org/abs/2102.09672
-        """
-
-        steps = timesteps + 1
-        x = torch.linspace(0, timesteps, steps)
-        alphas_cumprod = torch.cos(((x / timesteps) + s) / (1 + s) * torch.pi * 0.5) ** 2
-        alphas_cumprod = alphas_cumprod / alphas_cumprod[0]
-        betas = 1 - (alphas_cumprod[1:] / alphas_cumprod[:-1])
-        return torch.clip(betas, 0.0001, 0.9999)

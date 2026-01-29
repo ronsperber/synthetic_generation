@@ -26,6 +26,7 @@ def p_sample(
     betas: torch.Tensor,
     alphas: torch.Tensor,
     alphas_cumprod: torch.Tensor,
+    alphas_cumprod_prev: torch.Tensor,
     c: torch.Tensor | None = None
 ):
     """
@@ -34,7 +35,7 @@ def p_sample(
     beta_t = betas[t]
     alpha_t = alphas[t]
     alpha_bar_t = alphas_cumprod[t]
-    alpha_bar_prev = alphas_cumprod[t - 1] if t > 0 else torch.tensor(1.0, device=x_t.device)
+    alpha_bar_prev = alphas_cumprod_prev[t]
 
     eps_theta = model(x_t, torch.full((x_t.size(0),), t, device=x_t.device), c)
     mean = (1 / torch.sqrt(alpha_t)) * (
