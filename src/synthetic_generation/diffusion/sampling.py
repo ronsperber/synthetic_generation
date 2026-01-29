@@ -34,6 +34,7 @@ def p_sample(
     beta_t = betas[t]
     alpha_t = alphas[t]
     alpha_bar_t = alphas_cumprod[t]
+    alpha_bar_prev = alphas_cumprod[t - 1] if t > 0 else torch.tensor(1.0, device=x_t.device)
 
     eps_theta = model(x_t, torch.full((x_t.size(0),), t, device=x_t.device), c)
     mean = (1 / torch.sqrt(alpha_t)) * (
@@ -42,7 +43,8 @@ def p_sample(
 
     if t > 0:
         noise = torch.randn_like(x_t)
-        sigma = torch.sqrt(beta_t)
+        posterior_variance = beta_t * (1 - alpha_bar_prev) / (1 - alpha_bar_t)
+        sigma = torch.sqrt(posterior_variance)
         return mean + sigma * noise
     else:
         return mean
