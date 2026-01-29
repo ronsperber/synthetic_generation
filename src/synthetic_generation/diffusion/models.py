@@ -440,8 +440,7 @@ class DiffusionProcess:
         for t in tqdm(
             reversed(range(self.num_timesteps)),
             desc="Sampling",
-            total=self.num_timesteps,
-            leave=False
+            total=self.num_timesteps
             ):
             x_t = p_sample(
                 model=self.model,
