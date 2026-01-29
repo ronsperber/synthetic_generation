@@ -33,6 +33,8 @@ def cosine_beta_schedule(
         """
         if timesteps <=0:
                 raise ValueError("Number of timesteps must be positive")
+        if (s < 0.0) or (s >= 1.0):
+                raise ValueError("s should be in the interval [0,1) ")
         steps = timesteps + 1
         x = torch.linspace(0, timesteps, steps)
         alphas_cumprod = torch.cos(((x / timesteps) + s) / (1 + s) * torch.pi * 0.5) ** 2
@@ -40,7 +42,7 @@ def cosine_beta_schedule(
         betas = 1 - (alphas_cumprod[1:] / alphas_cumprod[:-1])
         return torch.clip(betas, 0.0001, 0.9999)
 
-def linear_schedule(
+def linear_beta_schedule(
                 beta_start: float = 1e-4,
                 beta_end: float = 0.02,
                 num_timesteps: int = 1000
