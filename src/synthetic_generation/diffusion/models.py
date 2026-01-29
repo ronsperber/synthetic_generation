@@ -437,7 +437,12 @@ class DiffusionProcess:
         # generate noise
         x_t= torch.randn(num_samples, self.data_dim, device=self.device)
         # go backwards one timestep at a time to denoise
-        for t in reversed(range(self.num_timesteps)):
+        for t in tqdm(
+            reversed(range(self.num_timesteps)),
+            desc="Sampling",
+            total=self.num_timesteps,
+            leave=False
+            ):
             x_t = p_sample(
                 model=self.model,
                 x_t = x_t,
@@ -447,6 +452,7 @@ class DiffusionProcess:
                 alphas_cumprod=self.alphas_cumprod,
                 c=c
             )
+        
         return x_t.cpu()
  
     def _cosine_beta_schedule(
