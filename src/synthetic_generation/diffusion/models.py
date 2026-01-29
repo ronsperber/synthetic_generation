@@ -284,10 +284,8 @@ class DiffusionProcess:
     def __init__(
             self,
             model : nn.Module,
+            betas : torch.Tensor,
             num_timesteps: int = 1000,
-            beta_schedule : str= "linear",
-            beta_start: float = 1e-4,
-            beta_end: float = 0.02,
             data_dim: int | None = None
     ):
         """
@@ -297,12 +295,8 @@ class DiffusionProcess:
             model that will learn the diffusion process
         num_timesteps: int
             number of time steps to be used
-        beta_schedule: str
-            description of schedule ("linear" or "cosine")
-        beta_start : float
-            start of betas
-        beta_end : float
-            end of betas
+        betas: torch.Tensor
+            tensor of beta values for scheduler
         data_dim: int | None
             dimension of the data if the model doesn't have it
         """
@@ -320,20 +314,10 @@ class DiffusionProcess:
             )     
         self.device = next(model.parameters()).device
         self.num_timesteps = num_timesteps
-        self.beta_start = beta_start
-        self.beta_end = beta_end
-        beta_schedule_lower=beta_schedule.strip().lower()
-        if beta_schedule_lower == "linear":
-            self.betas = torch.linspace(beta_start, beta_end, num_timesteps)
-        elif beta_schedule_lower == "cosine":
-            self.betas = self._cosine_beta_schedule(num_timesteps)
-        else:
-            raise ValueError(
-                f"Unknown beta_schedule: '{beta_schedule}'. "
-                f"Expected 'linear' or 'cosine'."
-                )
+        self.betas = betas
         self.alphas = 1.0 - self.betas
         self.alphas_cumprod = torch.cumprod(self.alphas, dim=0)
+        self.alphas_cumprod_prev = torch.cat([torch.tensor([1.0], device=self.device), self.alphas_cumprod[:-1]])
         self.sqrt_alphas_cumprod = torch.sqrt(self.alphas_cumprod)
         self.sqrt_one_minus_alphas_cumprod = torch.sqrt(1 - self.alphas_cumprod)
         
@@ -341,6 +325,7 @@ class DiffusionProcess:
         self.betas = self.betas.to(self.device)
         self.alphas = self.alphas.to(self.device)
         self.alphas_cumprod = self.alphas_cumprod.to(self.device)
+        self.alphas_cumprod_prev = self.alphas_cumprod_prev.to(self.device)
         self.sqrt_alphas_cumprod = self.sqrt_alphas_cumprod.to(self.device)
         self.sqrt_one_minus_alphas_cumprod = self.sqrt_one_minus_alphas_cumprod.to(self.device)
 
@@ -449,6 +434,7 @@ class DiffusionProcess:
                 betas=self.betas,
                 alphas=self.alphas,
                 alphas_cumprod=self.alphas_cumprod,
+                alphas_cumprod_prev=self.alphas_cumprod_prev,
                 c=c
             )
         
