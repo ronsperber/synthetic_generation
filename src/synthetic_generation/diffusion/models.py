@@ -4,13 +4,14 @@ module with model classes to use for diffusion
 from typing import Sequence, TypeAlias
 import warnings
 from collections.abc import Callable
+import math
 from tqdm.auto import tqdm
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
-import math
-from .sampling import p_sample, q_sample
+import numpy as np
+from .sampling import p_sample, q_sample, ddim_sample
 from .schedules import linear_beta_schedule
 from synthetic_generation.data_utils import make_dataloader
 # types used for the classes
@@ -443,4 +444,71 @@ class DiffusionProcess:
         
         return x_t.cpu()
  
+
+    @torch.no_grad()
+    def generate_samples_ddim(
+        self,
+        num_samples: int,
+        num_inference_steps: int = 50,
+        eta: float = 0.0,
+        c: torch.Tensor | None = None
+    ) -> torch.Tensor:
+        """
+        Generate samples using DDIM sampling (faster than DDPM)
     
+        DDIM allows skipping timesteps during sampling, enabling much faster
+        generation with minimal quality loss. With num_inference_steps=50,
+        this is ~20x faster than standard DDPM sampling.
+    
+        Parameters
+        ----------
+        num_samples : int
+            Number of samples to generate
+        num_inference_steps : int, default=50
+            Number of denoising steps. Fewer steps = faster sampling.
+            Typical values: 20-100 (vs 1000 for DDPM)
+        eta : float, default=0.0
+            Stochasticity parameter:
+            - eta=0.0: Deterministic DDIM (recommended)
+            - eta=1.0: Stochastic (similar to DDPM)
+        c : torch.Tensor, optional
+            Conditioning information
+    
+        Returns
+        -------
+        samples : torch.Tensor
+            Generated samples (on CPU)
+        """
+        if c is not None:
+            if c.shape[0] != num_samples:
+                raise ValueError(
+                    "Conditional c must have length equal to the number of samples"
+                )
+    
+        # Create evenly-spaced timestep schedule
+        # E.g., if num_timesteps=1000 and num_inference_steps=50,
+        # we get [0, 20, 40, 60, ..., 980, 1000]
+        timesteps = np.linspace(0, self.num_timesteps - 1, num_inference_steps, dtype=int)
+    
+        # Start from pure noise
+        x = torch.randn(num_samples, self.data_dim, device=self.device)
+    
+        # Iteratively denoise using DDIM
+        for i in tqdm(reversed(range(len(timesteps))),
+            desc=f"DDIM Sampling ({num_inference_steps} steps)",
+            total=len(timesteps)
+        ):
+            t = timesteps[i]
+            t_prev = timesteps[i - 1] if i > 0 else -1
+        
+            x = ddim_sample(
+                model=self.model,
+                x_t=x,
+                t=t,
+                t_prev=t_prev,
+                alphas_cumprod=self.alphas_cumprod,
+                eta=eta,
+                c=c
+            )
+    
+        return x.cpu()
