@@ -316,7 +316,7 @@ class DiffusionProcess:
         self.device = next(model.parameters()).device
         self.num_timesteps = num_timesteps
         if betas is None:
-            betas = linear_beta_schedule()
+            betas = linear_beta_schedule(num_timesteps=num_timesteps)
         self.betas = betas
         self.alphas = 1.0 - self.betas
         self.alphas_cumprod = torch.cumprod(self.alphas, dim=0)
