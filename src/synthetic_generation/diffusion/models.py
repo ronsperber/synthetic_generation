@@ -11,6 +11,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 import math
 from .sampling import p_sample, q_sample
+from .schedules import linear_beta_schedule
 from synthetic_generation.data_utils import make_dataloader
 # types used for the classes
 LayerDims = tuple[int, int]
@@ -284,7 +285,7 @@ class DiffusionProcess:
     def __init__(
             self,
             model : nn.Module,
-            betas : torch.Tensor,
+            betas : torch.Tensor | None = None,
             num_timesteps: int = 1000,
             data_dim: int | None = None
     ):
@@ -295,7 +296,7 @@ class DiffusionProcess:
             model that will learn the diffusion process
         num_timesteps: int
             number of time steps to be used
-        betas: torch.Tensor
+        betas: torch.Tensor (optional)
             tensor of beta values for scheduler
         data_dim: int | None
             dimension of the data if the model doesn't have it
@@ -311,9 +312,11 @@ class DiffusionProcess:
                 raise AttributeError(
                     f"Model {type(model).__name__} must have 'data_dim' attribute "
                     " or data_dim must be specified."
-            )     
+            )
         self.device = next(model.parameters()).device
         self.num_timesteps = num_timesteps
+        if betas is None:
+            betas = linear_beta_schedule()
         self.betas = betas
         self.alphas = 1.0 - self.betas
         self.alphas_cumprod = torch.cumprod(self.alphas, dim=0)
