@@ -224,8 +224,7 @@ class DiffusionNet(BaseMLP):
             activation to be used post embedding
         """
         # if no embedding is specified, use default MLP Time embedding
-        if time_embedding is None:
-            time_embedding = MLPTimeEmbedding()
+        time_embedding = time_embedding or MLPTimeEmbedding()
         # make sure the embedding has an embedding_dim attribute needed to know dimension of time embedding
         if  hasattr(time_embedding, 'embedding_dim'):
             self.time_embedding_dim = time_embedding.embedding_dim
@@ -244,8 +243,8 @@ class DiffusionNet(BaseMLP):
                          num_hidden_layers=num_hidden_layers,
                          activation=activation)
         if conditional_dim > 0:
-            if conditional_embedding is None:
-                conditional_embedding = nn.Identity()
+            # validate set conditional embedding when conditional_dim > 0
+            conditional_embedding = conditional_embedding or nn.Identity()
             self.conditional_embedding = conditional_embedding
             if hasattr(conditional_embedding,'embedding_dim'):
                 if conditional_embedding.embedding_dim != conditional_dim:
