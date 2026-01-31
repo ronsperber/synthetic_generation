@@ -102,3 +102,41 @@ def test_embedding_dim_mismatch_raises(basic_components):
             conditional_dim=5,
             conditional_embedding=embedding
         )
+
+# integration test
+
+def test_continuous_conditional_with_mlp_embedding(basic_components):
+    """Continuous conditional passed through a small MLP embedding"""
+    batch_size = basic_components['batch_size']
+    x_t = basic_components['x_t']
+    t = basic_components['t']
+
+    conditional_dim = 4  # output dimension of embedding
+    input_dim = 6        # input dimension of continuous conditional
+
+    # tiny MLP embedding: input -> hidden -> output
+    class SmallMLPEmbedding(nn.Module):
+        def __init__(self, input_dim, output_dim):
+            super().__init__()
+            self.embedding_dim = output_dim
+            self.net = nn.Sequential(
+                nn.Linear(input_dim, 8),
+                nn.ReLU(),
+                nn.Linear(8, output_dim)
+            )
+        def forward(self, x):
+            return self.net(x)
+
+    embedding = SmallMLPEmbedding(input_dim=input_dim, output_dim=conditional_dim)
+
+    # continuous conditional tensor
+    c = torch.randn(batch_size, input_dim)
+
+    net = DiffusionNet(
+        data_dim=basic_components['data_dim'],
+        conditional_dim=conditional_dim,
+        conditional_embedding=embedding
+    )
+
+    out = net(x_t, t, c)
+    assert out.shape == x_t.shape
