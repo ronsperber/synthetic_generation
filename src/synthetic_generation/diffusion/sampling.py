@@ -50,8 +50,6 @@ def p_sample(
     else:
         return mean
     
-
-
 @torch.no_grad()
 def ddim_sample(
     model: nn.Module,

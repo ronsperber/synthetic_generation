@@ -2,7 +2,7 @@
 
 import pytest
 import torch
-from synthetic_generation.diffusion.sampling import q_sample, p_sample
+from synthetic_generation.diffusion.sampling import q_sample, p_sample, ddim_sample
 from synthetic_generation.diffusion.models import DiffusionNet
 from synthetic_generation.diffusion.schedules import linear_beta_schedule
 
@@ -221,4 +221,112 @@ def test_p_sample_no_grad():
     )
     
     # p_sample is decorated with @torch.no_grad(), so output shouldn't require grad
+    assert not x_prev.requires_grad
+
+# DDIM tests
+
+def test_ddim_sample_shape(diffusion_components):
+    model = DiffusionNet(data_dim=2)
+    x_t = torch.randn(5, 2)
+    t = 50
+    t_prev = 40
+
+    x_prev = ddim_sample(
+        model=model,
+        x_t=x_t,
+        t=t,
+        t_prev=t_prev,
+        alphas_cumprod=diffusion_components['alphas_cumprod'],
+        eta=0.0
+    )
+
+    assert x_prev.shape == x_t.shape
+
+
+def test_ddim_deterministic_when_eta_zero(diffusion_components):
+    model = DiffusionNet(data_dim=2)
+    x_t = torch.randn(5, 2)
+    t = 50
+    t_prev = 40
+
+    x_prev1 = ddim_sample(
+        model=model,
+        x_t=x_t,
+        t=t,
+        t_prev=t_prev,
+        alphas_cumprod=diffusion_components['alphas_cumprod'],
+        eta=0.0
+    )
+
+    x_prev2 = ddim_sample(
+        model=model,
+        x_t=x_t,
+        t=t,
+        t_prev=t_prev,
+        alphas_cumprod=diffusion_components['alphas_cumprod'],
+        eta=0.0
+    )
+
+    assert torch.allclose(x_prev1, x_prev2)
+
+def test_ddim_stochastic_when_eta_positive(diffusion_components):
+    model = DiffusionNet(data_dim=2)
+    x_t = torch.randn(5, 2)
+    t = 50
+    t_prev = 40
+
+    x_prev1 = ddim_sample(
+        model=model,
+        x_t=x_t,
+        t=t,
+        t_prev=t_prev,
+        alphas_cumprod=diffusion_components['alphas_cumprod'],
+        eta=1.0
+    )
+
+    x_prev2 = ddim_sample(
+        model=model,
+        x_t=x_t,
+        t=t,
+        t_prev=t_prev,
+        alphas_cumprod=diffusion_components['alphas_cumprod'],
+        eta=1.0
+    )
+
+    assert not torch.allclose(x_prev1, x_prev2)
+
+def test_ddim_sample_with_conditioning(diffusion_components):
+    model = DiffusionNet(data_dim=2, conditional_dim=3)
+    x_t = torch.randn(5, 2)
+    c = torch.randn(5, 3)
+    t = 50
+    t_prev = 40
+
+    x_prev = ddim_sample(
+        model=model,
+        x_t=x_t,
+        t=t,
+        t_prev=t_prev,
+        alphas_cumprod=diffusion_components['alphas_cumprod'],
+        eta=0.0,
+        c=c
+    )
+
+    assert x_prev.shape == x_t.shape
+
+def test_ddim_sample_no_grad(diffusion_components):
+    model = DiffusionNet(data_dim=2)
+    x_t = torch.randn(5, 2, requires_grad=True)
+    t = 50
+    t_prev = 40
+
+    x_prev = ddim_sample(
+        model=model,
+        x_t=x_t,
+        t=t,
+        t_prev=t_prev,
+        alphas_cumprod=diffusion_components['alphas_cumprod'],
+        eta=0.0
+    )
+
     assert not x_prev.requires_grad

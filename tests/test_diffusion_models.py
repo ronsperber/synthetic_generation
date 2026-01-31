@@ -47,7 +47,7 @@ def test_diffusion_net_various_embeddings(embedding):
     data_dim = 2
     t = torch.tensor([0, 10, 20])
     x_t = torch.randn(batch_size, data_dim)
-    net = DiffusionNet(data_dim, embedding=embedding)
+    net = DiffusionNet(data_dim, time_embedding=embedding)
     out = net(x_t, t)
     assert out.shape == (batch_size, data_dim)
     assert torch.all(torch.isfinite(out))
@@ -62,7 +62,7 @@ def test_diffusion_net_invalid_embedding():
         def forward(self, t):
             return t
     with pytest.raises(AttributeError):
-        DiffusionNet(data_dim=3, embedding=BadEmbedding())
+        DiffusionNet(data_dim=3, time_embedding=BadEmbedding())
 
 def test_diffusion_net_forward_time_dim_check():
     """Raises if t is not 1D"""
@@ -83,7 +83,7 @@ def test_diffusion_net_zero_hidden_custom_embedding():
     x_t = torch.randn(batch_size, data_dim)
     
     embedding = MLPTimeEmbedding(num_hidden_layers=0, hidden_dims=(64,64), embedding_dim=16)
-    net = DiffusionNet(data_dim, embedding=embedding)
+    net = DiffusionNet(data_dim, time_embedding=embedding)
     
     out = net(x_t, t)
     assert out.shape == (batch_size, data_dim)
@@ -139,8 +139,8 @@ def test_diffusion_net_conditional_batch_mismatch_raises():
 def test_diffusion_net_embedding_dim_from_attribute():
     """Uses embedding.embedding_dim if present"""
     embedding = SinusoidalTimeEmbedding(embedding_dim=64)
-    net = DiffusionNet(data_dim=2, embedding=embedding)
-    assert net.embedding_dim == 64
+    net = DiffusionNet(data_dim=2, time_embedding=embedding)
+    assert net.time_embedding_dim == 64
 
 def test_diffusion_net_embedding_dim_explicit():
     """Uses explicit embedding_dim parameter if embedding lacks attribute"""
@@ -149,8 +149,8 @@ def test_diffusion_net_embedding_dim_explicit():
             return torch.randn(t.shape[0], 32)
     
     embedding = CustomEmbedding()
-    net = DiffusionNet(data_dim=2, embedding=embedding, embedding_dim=32)
-    assert net.embedding_dim == 32
+    net = DiffusionNet(data_dim=2, time_embedding=embedding, time_embedding_dim=32)
+    assert net.time_embedding_dim == 32
 
 def test_sinusoidal_deterministic():
     """Same input produces same output"""

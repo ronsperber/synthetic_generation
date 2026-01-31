@@ -195,53 +195,67 @@ class DiffusionNet(BaseMLP):
             self,
             data_dim: int,
             conditional_dim: int = 0,
-            embedding: nn.Module | None = None,
+            conditional_embedding: nn.Module | None = None,
+            time_embedding_dim : int | None = None,
+            time_embedding: nn.Module | None = None,
             num_hidden_layers: int = 2,
             hidden_dims: HiddenDims = (128,128),
-            activation: ActivationFactory = nn.ReLU,
-            embedding_dim : int | None = None
+            activation: ActivationFactory = nn.ReLU
             ):
         """
         Parameters
         ----------
         data_dim : int
             dimension of data that is being generated
-        conditional dim : int
-            dimension of conditioning tensor
-        embedding : nn.Module | None
-            when not None, the embedding module
+        conditional_dim : int
+            dimension of conditioning tensor or embedded conditioning tensor
+        conditional_embedding : nn.Module | None
+            when not None, embedding module to use for conditioning tensor
+        time_embedding_dim: int | None
+            when the time_embedding module has no embedding_dim attribute, used for dimension of embedding
+            ignored if embedding has the attribute
+        time_embedding : nn.Module | None
+            when not None, the embedding module for the time input
         num_hidden_layers: int
             number of hidden layers to use post embedding
         hidden_dims: int
             dimensions for hidden layers post embedding
         activation: ActivationFactory
             activation to be used post embedding
-        embedding_dim: int | None
-            when the embedding module has no embedding_dim attribute, used for dimension of embedding
-            ignored if embedding has the attribute
         """
         # if no embedding is specified, use default MLP Time embedding
-        if embedding is None:
-            embedding = MLPTimeEmbedding()
+        if time_embedding is None:
+            time_embedding = MLPTimeEmbedding()
         # make sure the embedding has an embedding_dim attribute needed to know dimension of time embedding
-        if  hasattr(embedding, 'embedding_dim'):
-            self.embedding_dim = embedding.embedding_dim
-        elif embedding_dim is not None:
-            self.embedding_dim = embedding_dim
+        if  hasattr(time_embedding, 'embedding_dim'):
+            self.time_embedding_dim = time_embedding.embedding_dim
+        elif time_embedding_dim is not None:
+            self.time_embedding_dim = time_embedding_dim
         else:
             raise AttributeError(
-                f"Time embedding {type(embedding).__name__} must have 'embedding_dim' attribute "
+                f"Time embedding {type(time_embedding).__name__} must have 'embedding_dim' attribute "
                 " or embedding_dim must be specified."
             )       
         self.conditional_dim = conditional_dim
         self.data_dim = data_dim
-        # create the network with data_dim + embedding_dim + conditional_dim inputs
-        super().__init__(input_dim=data_dim + self.embedding_dim + self.conditional_dim,
+        super().__init__(input_dim=data_dim + self.time_embedding_dim + self.conditional_dim,
                          output_dim=data_dim,
                          hidden_dims=hidden_dims,
                          num_hidden_layers=num_hidden_layers,
                          activation=activation)
-        self.embedding = embedding
+        if conditional_dim > 0:
+            if conditional_embedding is None:
+                conditional_embedding = nn.Identity()
+            self.conditional_embedding = conditional_embedding
+            if hasattr(conditional_embedding,'embedding_dim'):
+                if conditional_embedding.embedding_dim != conditional_dim:
+                    raise ValueError(
+                        f"conditional_dim {conditional_dim} does not match "
+                        f"conditional_embedding.embedding_dim {conditional_embedding.embedding_dim}"
+                    )
+        else: 
+            self.conditional_embedding = None
+        self.time_embedding = time_embedding
         
 
     def forward(
@@ -267,13 +281,14 @@ class DiffusionNet(BaseMLP):
         if t.dim() > 1:
             raise ValueError("time input should be 1 dimensional")
         # embed t using the embedding module
-        t_embed = self.embedding(t)
+        t_embed = self.time_embedding(t)
         # verify that c is correct when the conditional dimension is > 0 
         if self.conditional_dim > 0:
             if c is None:
                 raise ValueError("Conditional dimension is > 0 , but no conditional was passed")
             if c.shape[0] != x_t.shape[0]:
                 raise ValueError("Conditional tensor must have same batch size as x_t")
+            c = self.conditional_embedding(c)
             x = torch.cat([x_t, t_embed, c], dim=1)
         else:
             x = torch.cat([x_t, t_embed], dim=1)

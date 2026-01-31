@@ -239,3 +239,16 @@ def test_diffusion_process_conditional_end_to_end():
     c_gen = torch.randn(30, 3)
     samples = process.generate_samples(num_samples=30, c=c_gen)
     assert samples.shape == (30, 2)
+
+def test_generate_samples_ddim_shape():
+    model = DiffusionNet(data_dim=2)
+    betas = linear_beta_schedule(num_timesteps=100)
+    process = DiffusionProcess(model=model, betas=betas, num_timesteps=100, data_dim=2)
+
+    samples = process.generate_samples_ddim(
+        num_samples=10,
+        num_inference_steps=20,
+        eta=0.0
+    )
+
+    assert samples.shape == (10, 2)
