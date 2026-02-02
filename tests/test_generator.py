@@ -87,3 +87,68 @@ def test_generator_multiple_heads_backward():
     loss.backward()
     grads = [p.grad for p in G.parameters() if p.grad is not None]
     assert len(grads) > 0
+
+def test_generator_generate_samples_uses_decode():
+    torch.manual_seed(42)
+    heads = [
+        OutputHead(dim=2, activation=nn.Identity, decode=nn.Identity, name="head1"),
+        OutputHead(dim=3, activation=nn.Identity, decode=nn.ReLU, name="head2"),
+        OutputHead(dim=1, activation=nn.Identity, decode=nn.Sigmoid, name="head3"),
+    ]
+    G = Generator(noise_dim=4, num_hidden_layers=2, hidden_dims=[(4, 8), (8, 8)], output_heads=heads)
+
+    samples = G.generate_samples(num_samples=7)
+
+    expected_dim = sum(head.dim for head in heads)
+    assert samples.shape == (7, expected_dim)
+
+    # head2: ReLU decode → non-negative
+    assert (samples[:, 2:5] >= 0).all()
+
+    # head3: Sigmoid decode → in [0, 1]
+    assert ((0 <= samples[:, 5:6]) & (samples[:, 5:6] <= 1)).all()
+
+def test_generate_samples_restores_training_mode():
+    G = Generator(noise_dim=4, num_hidden_layers=1, hidden_dims=[(4, 8)],out_dim=3)
+    G.train()
+    assert G.training is True
+
+    _ = G.generate_samples(num_samples=5)
+
+    assert G.training is True
+
+def test_generate_samples_restores_eval_mode():
+    G = Generator(noise_dim=4, num_hidden_layers=1, hidden_dims=[(4, 8)],out_dim=3)
+    G.eval()
+    assert G.training is False
+
+    _ = G.generate_samples(num_samples=5)
+
+    assert G.training is False
+
+def test_activation_and_decode_are_distinct_paths():
+    torch.manual_seed(0)
+
+    heads = [
+        OutputHead(dim=1, activation=nn.Identity, decode=nn.Tanh),
+        OutputHead(dim=1, activation=nn.Identity, decode=nn.Sigmoid),
+    ]
+    G = Generator(noise_dim=2, num_hidden_layers=1, hidden_dims=[(2, 4)], output_heads=heads)
+
+    z = torch.randn(5, 2)
+
+    # Training path
+    G.train()
+    out_train = G(z)
+
+    # Inference path (same input, but decode should apply)
+    G.eval()
+    out_eval = G(z)
+
+    # Outputs should differ due to decode
+    assert not torch.allclose(out_train, out_eval)
+
+    # And inference outputs should respect decode ranges
+    assert ((out_eval[:, 0:1] >= -1) & (out_eval[:, 0:1] <= 1)).all()
+    assert ((out_eval[:, 1:2] >= 0) & (out_eval[:, 1:2] <= 1)).all()
+
