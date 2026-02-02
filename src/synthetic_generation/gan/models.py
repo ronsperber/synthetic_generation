@@ -189,7 +189,7 @@ class Generator(nn.Module):
         z = torch.randn(num_samples, self.noise_dim, device=device)
         return self.forward(z, c)
 
-    def generate_sample(self, num_samples: int, c: torch.Tensor | None = None):
+    def generate_samples(self, num_samples: int, c: torch.Tensor | None = None):
         """
         function to generate inference samples in eval mode to use the decode on output heads
         Parameters
