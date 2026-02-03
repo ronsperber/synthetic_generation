@@ -30,7 +30,18 @@ The focus is on **synthetic data generation for low-dimensional or tabular datas
   GAN/WGAN-GP utility functions, including:
   - `gradient_penalty` for WGAN-GP
   - `cov_matrix` and `cov_penalty` for use for feature matching penalties
-  - `load_gan_checkpoint` to load a saved model
+
+- `src/synthetic_generation/gan/model_saving.py`
+  GAN/WGAN-GP functions to save and load model information
+  - `save_gan_checkpoint` to save information on G,D and any desired configs
+  - `load_gan_checkpoint` to create a G, D from saved data
+
+- `src/synthetic_generation/gan/process.py`
+  Contains wrapper classes to hold model pairs, train, save, load
+  - `BaseGanProcess` contains the model info, has load and save methods common to both GAN and WGAP-GP
+  - `GANProcess` specific to GANs with a `train` method using `train_gan`
+  - `WGANProcess` specific to WGAN-GPs with a `train` method using `train_wgan_gp`
+  
 
 - `src/synthetic_generation/diffusion/models.py`
 Diffusion models including
@@ -44,16 +55,21 @@ Diffusion models including
 Has functions to generate schedules for use with diffusion including `linear_beta_schedule` and `cosine_beta_schedule`
 
 - `src/synthetic_generation/diffusion/sampling.py`
-Functions for sampling in diffusion:
+  Functions for sampling in diffusion:
   - `q_sample` : used to sample `x_t` from `x_0` and t
   - `p_sample` : used to sample `x_{t-1}` from `x_t` for DDPM
   - `ddim_sample` : used to sample for DDIM 
 
+- `src/synthetic_generation/diffuision/model_saving.py`
+  Contains functions used to save/load a diffusion process
+  - `save_diffusion_checkpoint` : used to save a diffusion process
+  - `load_diffusion_checkpoint` : used to load a saved diffusion process
+
 - `src/synthetic_generation/data_utils.py`
-General data utilities, including :
+  General data utilities, including :
   - `make_dataloader` to take a data set or data set + conditional and turn into a data loader
 
-- `Notebooks\GAN`   
+- `Notebooks/GAN`   
   Sample notebooks illustrating
   - Vanilla GAN
   - Conditional GAN
@@ -165,25 +181,25 @@ train_gan(
 # generate fake data from this
 X_fake_cond = G_cond.generate_samples(20000, c)
 ```
-To save the results of training, add a `save_path` argument, e.g.
+To save the results of training, use the `save_gan_checkpoint`
 ```python
-train_gan(
-  X=X_torch,
-  G=G_cond,
-  D=D_cond,
-  c=c,
-  save_path='cond_gan.pt'
+from synthetic_generation.gan.model_saving import save_gan_checkpoint
+save_gan_checkpoint(
+  path='cond_gan.pt',
+  G=G,
+  D=D
+  train_configs={'epochs':200} # add whatever training configurations you like here
 )
 ```
 
 To then load the model, we use the `load_gan_checkpoint` as follows
 ```python
-from synthetic_generation.gan.utils import load_gan_checkpoint
+from synthetic_generation.gan.model_saving import load_gan_checkpoint
 G,D,configs = load_gan_checkpoint(
   path = 'cond_gan.pt'
 )
 ```
-`G` will be a copy of the trained Generator, `D` will be a copy of the trained Discriminator, and `configs` will be a dictionary of configs used in the train function. 
+`G` will be a copy of the trained Generator, `D` will be a copy of the trained Discriminator, and `configs` will be a dictionary of configs saved. 
 ### WGAN-GP notes
 
 To train a WGAN-GP use `train_wgan_gp()` instead of `train_gan()`
