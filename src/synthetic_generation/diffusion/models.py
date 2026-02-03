@@ -29,6 +29,9 @@ class SinusoidalTimeEmbedding(nn.Module):
         embedding_dim = int(embedding_dim)
         if embedding_dim % 2 != 0:
             raise ValueError("Embedding dimension for sinusoidal embedding must be even")
+        self.init_args = {
+            "embedding_dim" : embedding_dim
+        }
         self.embedding_dim = embedding_dim
     
     def forward(self, t: torch.Tensor):
@@ -66,7 +69,7 @@ class BaseMLP(nn.Module):
         output_dim: int,
         hidden_dims: HiddenDims,
         num_hidden_layers: int,
-        activation: ActivationFactory = nn.ReLU
+        activation: ActivationFactory | None = None
     ):
         """
         Parameters
@@ -79,11 +82,21 @@ class BaseMLP(nn.Module):
             single tuple (n,n) or list of tuples for the sizes of hidden layers
         num_hidden_layers: int
             number of hidden layers
-        activation: ActivationFactory
+        activation: ActivationFactory | None
             activation function to be used for all layers except output layer
+            when None, nn.ReLU is used
         """
         super().__init__()
+        self.init_args = {
+            "input_dim": input_dim,
+            "output_dim": output_dim,
+            "hidden_dims": hidden_dims,
+            "num_hidden_layers": num_hidden_layers,
+            "activation" : activation
+        }
         # make sure the activation is a callable function
+        if activation is None:
+            activation=nn.ReLU
         if callable(activation) and not isinstance(activation, nn.Module):
             self.activation = activation()
         else:
@@ -148,7 +161,7 @@ class MLPTimeEmbedding(BaseMLP):
             embedding_dim: int = 32,
             num_hidden_layers:int = 2, 
             hidden_dims:HiddenDims = (128,128),
-            activation:ActivationFactory = nn.ReLU,
+            activation:ActivationFactory | None = None,
             num_timesteps:int = 1000):
         """
         Parameters
@@ -158,8 +171,9 @@ class MLPTimeEmbedding(BaseMLP):
             number of hidden layers
         hidden_dims: HiddenDims
             dimensions to use for the hidden layers
-        activation : ActivationFactory
+        activation : ActivationFactory | None
             activation function for layers other than output layer
+            When None, it will default to nn.ReLU
         num_timesteps: int
             number of time steps possible for t
         """
@@ -170,6 +184,13 @@ class MLPTimeEmbedding(BaseMLP):
             num_hidden_layers=num_hidden_layers,
             activation=activation
             )
+        self.init_args = {
+            "embedding_dim": embedding_dim,
+            "num_hidden_layers": num_hidden_layers,
+            "hidden_dims": hidden_dims,
+            "activation": activation,
+            "num_timesteps": num_timesteps
+        }
         self.num_timesteps = num_timesteps
         self.embedding_dim = embedding_dim
     def forward(self, t: torch.Tensor) -> torch.Tensor:
@@ -200,7 +221,7 @@ class DiffusionNet(BaseMLP):
             time_embedding: nn.Module | None = None,
             num_hidden_layers: int = 2,
             hidden_dims: HiddenDims = (128,128),
-            activation: ActivationFactory = nn.ReLU
+            activation: ActivationFactory | None = None
             ):
         """
         Parameters
@@ -220,9 +241,19 @@ class DiffusionNet(BaseMLP):
             number of hidden layers to use post embedding
         hidden_dims: int
             dimensions for hidden layers post embedding
-        activation: ActivationFactory
-            activation to be used post embedding
+        activation: ActivationFactory | None
+            activation to be used post embedding. When None, nn.ReLU is the default
         """
+        self.init_args = {
+            "data_dim": data_dim,
+            "conditional_dim": conditional_dim,
+            "conditional_embedding": conditional_embedding,
+            "time_embedding_dim": time_embedding_dim,
+            "time_embedding": time_embedding,
+            "num_hidden_layers": num_hidden_layers,
+            "hidden_dims": hidden_dims,
+            "activation": activation
+        }
         # if no embedding is specified, use default MLP Time embedding
         time_embedding = time_embedding or MLPTimeEmbedding()
         # make sure the embedding has an embedding_dim attribute needed to know dimension of time embedding
@@ -255,6 +286,7 @@ class DiffusionNet(BaseMLP):
         else: 
             self.conditional_embedding = None
         self.time_embedding = time_embedding
+        
         
 
     def forward(
