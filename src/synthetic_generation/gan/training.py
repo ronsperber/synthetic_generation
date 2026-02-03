@@ -26,7 +26,8 @@ def train_gan(
     loss : Literal["bce", "bce_with_logits"] = "bce_with_logits",
     batch_size: int = 64,
     epochs: int = 200,
-    return_history: bool = False
+    return_history: bool = False,
+    return_configs: bool = False
 ):
     """
     Function to train a GAN
@@ -61,12 +62,24 @@ def train_gan(
         when not None, where to save information about the models
     return_history : boolean
         whether or not to return the history of losses
+    return_configs: boolean
+        whether or not to return the training configs
     """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     G.to(device)
     D.to(device)
     G.train()
     D.train()
+    train_configs = {
+        "lr_G": lr_G,
+        "lr_D": lr_D,
+        "lambda_fm_1": lambda_fm_1,
+        "lambda_fm_2": lambda_fm_2,
+        "lambda_entropy": lambda_entropy,
+        "loss": loss,
+        "batch_size": batch_size,
+        "epochs": epochs
+    }
     if return_history:
         G_losses = []
         D_losses = []
@@ -173,8 +186,12 @@ def train_gan(
 
         )
     pbar.close()
-    if return_history:
+    if return_history and return_configs:
+        return G_losses, D_losses, train_configs
+    elif return_history:
         return G_losses, D_losses
+    elif return_configs:
+        return train_configs
    
 
 
@@ -192,7 +209,8 @@ def train_wgan_gp(
     epochs: int = 200,
     n_critic: int = 5,
     lambda_gp: float = 10.0,
-    return_history : bool = True
+    return_history : bool = False,
+    return_configs: bool = False
 ):
     """
     Function to train a WGAN-GP
@@ -224,10 +242,10 @@ def train_wgan_gp(
         number of passes the critic makes each batch
     lambda_gp : float
         lambda used for the gradient penalty
-    save_path : str | None:
-        when not None, the path to save model information
     return_history : bool
         whether or not to return the history of losses over training
+    return_configs : bool
+        whether or not to return the training_configs
     
     """
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -235,6 +253,17 @@ def train_wgan_gp(
     D.to(device)
     G.train()
     D.train()
+    train_configs = {
+        "lr_G": lr_G,
+        "lr_D": lr_D,
+        "lambda_fm_1": lambda_fm_1,
+        "lambda_fm_2": lambda_fm_2,
+        "lambda_entropy": lambda_entropy,
+        "batch_size": batch_size,
+        "epochs": epochs,
+        "n_critic": n_critic,
+        "lambda_gp": lambda_gp
+    }
     if return_history:
         G_losses = []
         D_losses = []
@@ -327,5 +356,9 @@ def train_wgan_gp(
             {"D": f"{np.mean(epoch_d_losses):.4f}", "G": f"{np.mean(epoch_g_losses):.4f}"}
         )
     pbar.close()
-    if return_history:
+    if return_history and return_configs:
+        return G_losses, D_losses, train_configs
+    elif return_history:
         return G_losses, D_losses
+    elif return_configs:
+        return train_configs
