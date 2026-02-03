@@ -14,9 +14,10 @@ from synthetic_generation.data_utils import make_dataloader
 
 
 def train_gan(
-    X: torch.Tensor | DataLoader,
     G: Generator,
     D: Discriminator,
+    X: torch.Tensor | DataLoader,
+    c: torch.Tensor | None = None,
     lr_G: float = 1e-4,
     lr_D: float = 1e-4,
     lambda_fm_1: float = 0,
@@ -25,20 +26,20 @@ def train_gan(
     loss : Literal["bce", "bce_with_logits"] = "bce_with_logits",
     batch_size: int = 64,
     epochs: int = 200,
-    c: torch.Tensor | None = None,
-    save_path: str | None = None,
     return_history: bool = True
 ):
     """
     Function to train a GAN
     Parameters
     ----------
-    X : torch.Tensor | DataLoader
-        data that the generator will be trying to emulate
     G: Generator
         the generator for the model
     D: Discriminator
         the Discriminator for the model
+    X : torch.Tensor | DataLoader
+        data that the generator will be trying to emulate
+    c : Optional torch.Tensor
+        for conditional GAN, the conditional
     lr_G : float
         the learning rate for the Generator
     lr_D : float
@@ -56,8 +57,6 @@ def train_gan(
         if a DataLoader is passed, this has no effect
     epochs : int
         number of epochs to train over
-    c : Optional torch.Tensor
-        for conditional GAN, the conditional
     save_path: str | None
         when not None, where to save information about the models
     return_history : boolean
@@ -174,32 +173,16 @@ def train_gan(
 
         )
     pbar.close()
-    if save_path is not None:
-        # when saving models, note that D_config and G_config contain activation function classes 
-        # e.g. nn.LeakyReLU, so when loading, torch.load will need weights_only=False
-        torch.save({
-            "training_configs": {
-                "epochs": epochs,
-                "lr_G": lr_G,
-                "lr_D": lr_D,
-                "lambda_fm_1": lambda_fm_1,
-                "lambda_fm_2": lambda_fm_2,
-                "batch_size": batch_size,
-                "loss": loss
-            },
-            "G_config": G.init_args,
-            "D_config": D.init_args,
-            "G_state_dict": G.state_dict(),
-            "D_state_dict": D.state_dict()
-        }, save_path)
     if return_history:
         return G_losses, D_losses
+   
 
 
 def train_wgan_gp(
-    X: torch.Tensor | DataLoader,
     G: Generator,
     D: Discriminator,
+    X: torch.Tensor | DataLoader,
+    c: torch.Tensor | None = None,
     lr_G: float = 1e-4,
     lr_D: float = 1e-4,
     lambda_fm_1: float = 0,
@@ -207,21 +190,21 @@ def train_wgan_gp(
     lambda_entropy: float = 0,
     batch_size: int = 64,
     epochs: int = 200,
-    c: torch.Tensor | None = None,
     n_critic: int = 5,
     lambda_gp: float = 10.0,
-    save_path : str | None = None,
     return_history : bool = True
 ):
     """
     Function to train a WGAN-GP
     Parameters
-    X : torch.Tensor | DataLoader
-        data to train the networks on
     G: Generator
         the Generator for the data
     D: Discriminator
         the Critic for the data
+    X : torch.Tensor | DataLoader
+        data to train the networks on
+    c : Optional torch.Tensor
+        when there is a condtional, this represents the conditional for the training data
     lr_G : float
         the learning rate for G
     lr_D : float
@@ -237,8 +220,6 @@ def train_wgan_gp(
         when the data is a DataLoader, this has no effect
     epochs: int
         number of epochs to train
-    c : Optional torch.Tensor
-        when there is a condtional, this represents the conditional for the training data
     n_critic : int
         number of passes the critic makes each batch
     lambda_gp : float
@@ -346,26 +327,5 @@ def train_wgan_gp(
             {"D": f"{np.mean(epoch_d_losses):.4f}", "G": f"{np.mean(epoch_g_losses):.4f}"}
         )
     pbar.close()
-    if save_path is not None:
-        # when saving models, note that D_config and G_config contain activation function classes 
-        # e.g. nn.LeakyReLU, so when loading, torch.load will need weights_only=False
-        torch.save(
-            {
-                "training_configs" : {
-                    "epochs": epochs,
-                    "lr_G": lr_G,
-                    "lr_D": lr_D,
-                    "lambda_fm_1": lambda_fm_1,
-                    "lambda_fm_2": lambda_fm_2,
-                    "batch_size": batch_size,
-                    "n_critic": n_critic,
-                    "lambda_gp": lambda_gp
-                },
-                "G_config":G.init_args,
-                "D_config":D.init_args,
-                "G_state_dict":G.state_dict(),
-                "D_state_dict":D.state_dict()
-            },save_path
-        )
     if return_history:
         return G_losses, D_losses
