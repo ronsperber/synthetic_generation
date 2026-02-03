@@ -14,29 +14,33 @@ The focus is on **synthetic data generation for low-dimensional or tabular datas
 
 ## Repository Structure
 
-- `src/synthetic_generation/gan/models.py`  
+- `src/synthetic_generation/gan/models.py`
+  
   Contains classes for a **Generator** and **Discriminator (or Critic)**.  
   These are fully connected feed-forward networks built from linear layers and nonlinear activation functions, with optional conditional inputs. There is also an OutputHead dataclass with dims, activation, decode, and name.
   For the output head, `activation` is used during training, and `decode` used at inference.
   The `Generator` exposes a `.generate()` method that handles noise sampling and device placement automatically
 
-- `src/synthetic_generation/gan/training.py`  
+- `src/synthetic_generation/gan/training.py`
+   
   Contains training loops for:
   - standard GANs (`train_gan`)
   - WGAN-GP (`train_wgan_gp`)
-  These both return loss histories for the G and D by default, and it can be turned off with `return_history=False`
+  These both can return loss histories by setting `return_history=True`
 
-- `src/synthetic_generation/gan/utils.py`  
+- `src/synthetic_generation/gan/utils.py`
+  
   GAN/WGAN-GP utility functions, including:
   - `gradient_penalty` for WGAN-GP
   - `cov_matrix` and `cov_penalty` for use for feature matching penalties
-
 - `src/synthetic_generation/gan/model_saving.py`
+
   GAN/WGAN-GP functions to save and load model information
   - `save_gan_checkpoint` to save information on G,D and any desired configs
   - `load_gan_checkpoint` to create a G, D from saved data
 
 - `src/synthetic_generation/gan/process.py`
+  
   Contains wrapper classes to hold model pairs, train, save, load
   - `BaseGanProcess` contains the model info, has load and save methods common to both GAN and WGAP-GP
   - `GANProcess` specific to GANs with a `train` method using `train_gan`
@@ -44,39 +48,46 @@ The focus is on **synthetic data generation for low-dimensional or tabular datas
   
 
 - `src/synthetic_generation/diffusion/models.py`
-Diffusion models including
-  - SinusoidalTimeEmbedding` : to use sinusoidal embedding for time
+  
+  Diffusion models including
+  - `SinusoidalTimeEmbedding` : to use sinusoidal embedding for time
   - `BaseMLP` : basic multi-layer perceptron class used for the diffusion model and a time embedding
   - `MLPTimeEmbedding` : a class to use a multi-layer perceptron to embed the time dimension
   - `DiffusionModel` : a class to use for diffusion to predict noise
-  - `DiffusionProcess` : a class that holds a model attribute and has methods `train` to train the model on data, `generate_samples` to generate samples using DDPM and `generate_samples_ddim` to generate samples using DDIM
+  - `DiffusionProcess` : a class that holds a model attribute and has methods `train` to train the model on data, `generate_samples` to generate samples using DDPM and `generate_samples_ddim` to generate samples using DDIM. It can return loss history by setting `return_history=True`
 
 - `src/synthetic_generation/diffusion/schedules.py`
-Has functions to generate schedules for use with diffusion including `linear_beta_schedule` and `cosine_beta_schedule`
+  
+  Has functions to generate schedules for use with diffusion including `linear_beta_schedule` and `cosine_beta_schedule`
 
 - `src/synthetic_generation/diffusion/sampling.py`
+  
   Functions for sampling in diffusion:
   - `q_sample` : used to sample `x_t` from `x_0` and t
   - `p_sample` : used to sample `x_{t-1}` from `x_t` for DDPM
   - `ddim_sample` : used to sample for DDIM 
 
 - `src/synthetic_generation/diffuision/model_saving.py`
+  
   Contains functions used to save/load a diffusion process
   - `save_diffusion_checkpoint` : used to save a diffusion process
   - `load_diffusion_checkpoint` : used to load a saved diffusion process
 
 - `src/synthetic_generation/data_utils.py`
+  
   General data utilities, including :
   - `make_dataloader` to take a data set or data set + conditional and turn into a data loader
 
-- `Notebooks/GAN`   
+- `Notebooks/GAN`
+  
   Sample notebooks illustrating
   - Vanilla GAN
   - Conditional GAN
   - WGAN-GP
   - WGAN-GP with conditional
-- `Notebooks\Diffusion
-Sample notebooks illustrating
+- `Notebooks/Diffusion`
+  
+  Sample notebooks illustrating
   - Simple basic diffusion 
   - Diffusion with conditional using a flat tensor conditional
   - Diffusion with conditional using a conditional embedding
