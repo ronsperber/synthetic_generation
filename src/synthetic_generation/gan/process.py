@@ -41,9 +41,9 @@ class BaseGanProcess:
         
 class GANProcess(BaseGanProcess):
     def train(self, X, c=None, **train_args):
-        train_gan(G=self.G, D=self.D, X=X, c=c, **train_args)
+        self.train_configs = train_gan(G=self.G, D=self.D, X=X, c=c, return_configs=True, **train_args)
 
 
 class WGANProcess(BaseGanProcess):
     def train(self, X, c=None, **train_args):
-        train_wgan_gp( G=self.G, D=self.D, X=X, c=c, **train_args)
+        self.train_configs = train_wgan_gp( G=self.G, D=self.D, X=X, c=c, return_configs=True, **train_args)
