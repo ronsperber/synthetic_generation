@@ -213,7 +213,7 @@ class Generator(nn.Module):
         # restore training state
         if training:
             self.train()
-        return output
+        return output.cpu()
 
 
 class Discriminator(nn.Module):

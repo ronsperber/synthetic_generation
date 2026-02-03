@@ -122,7 +122,7 @@ G_history, D_history = train_gan(
 )
 
 # create a fake data set
-X_fake = G.generate_sample(10000)
+X_fake = G.generate_samples(10000)
 ```
 ### Training a conditional GAN
 The data is as we saw in the previous example (`X, centers, labels`)
@@ -286,7 +286,7 @@ X_fake_cond = process_cond.generate_samples(
   c=c_sample
 )
 ```
-Note: If a cosine schedule is to be used, it is strongly recommended to scale the data. (All data may work better if scaled, but due to the high betas at the end of the cosine schedule, it can really cause poor results if not scaled)
+Note: If a cosine schedule is to be used, it is **strongly recommended** to scale the data. (All data may work better if scaled, but due to the high betas at the end of the cosine schedule, it can really cause poor results if not scaled)
 
 ```python
 scaler = StandardScaler()

@@ -317,6 +317,9 @@ class DiffusionProcess:
             dimension of the data if the model doesn't have it
         """
         self.model = model
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.model.to(self.device)
+
         # if the model has a data_dim we use that and ignore data_dim passed (if any)
         if hasattr(model, "data_dim"):
             self.data_dim = model.data_dim
@@ -328,7 +331,6 @@ class DiffusionProcess:
                     f"Model {type(model).__name__} must have 'data_dim' attribute "
                     " or data_dim must be specified."
             )
-        self.device = next(model.parameters()).device
         self.num_timesteps = num_timesteps
         if betas is None:
             betas = linear_beta_schedule(num_timesteps=num_timesteps)
@@ -353,7 +355,8 @@ class DiffusionProcess:
             c : torch.Tensor | None = None,
             epochs: int = 100,
             batch_size: int = 512,
-            lr: float = 1e-4
+            lr: float = 1e-4,
+            return_history: bool = False
     ):
         """
         method to train self.model on dataset X
@@ -370,6 +373,12 @@ class DiffusionProcess:
             if DataLoader is passed, this is ignored
         lr: float
             learning rate to use while training
+        return_history: bool
+            whether or not to return the loss history
+        Returns
+        -------
+            (Optional) epoch_losses : list
+                list of tuples (epoch, epoch_loss)
         """
         if epochs <= 0:
             raise ValueError("Number of epochs must be positive")
@@ -386,7 +395,8 @@ class DiffusionProcess:
             raise TypeError("X must be a torch.Tensor or DataLoader")
         opt = torch.optim.Adam(self.model.parameters(), lr=lr)
         pbar = tqdm(range(1, epochs+1), desc = "Diffusion training")
-        for _ in pbar:
+        epoch_losses = []
+        for epoch in pbar:
             epoch_loss = 0
             for batch in dataloader:
                 if len(batch) == 1:
@@ -410,8 +420,11 @@ class DiffusionProcess:
                 opt.step()
                 epoch_loss += loss.item() * X_batch.size(0)
             epoch_loss /= len(dataloader.dataset)
+            epoch_losses.append((epoch,epoch_loss))
             pbar.set_postfix({"Loss" : f"{epoch_loss:.4f}"})
         pbar.close()
+        if return_history:
+            return epoch_losses
 
     @torch.no_grad()
     def generate_samples(
@@ -526,3 +539,4 @@ class DiffusionProcess:
             )
     
         return x.cpu()
+  
