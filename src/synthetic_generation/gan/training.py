@@ -26,7 +26,7 @@ def train_gan(
     loss : Literal["bce", "bce_with_logits"] = "bce_with_logits",
     batch_size: int = 64,
     epochs: int = 200,
-    return_history: bool = True
+    return_history: bool = False
 ):
     """
     Function to train a GAN

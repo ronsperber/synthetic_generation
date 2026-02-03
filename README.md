@@ -115,7 +115,7 @@ D = Discriminator(
 )
 
 # train the models
-G_history, D_history = train_gan(
+train_gan(
     X=X_torch,
     G=G,
     D=D
@@ -155,8 +155,7 @@ D_cond = Discriminator(
     use_conditional=True,
     conditional_dim=conditional_dim
 )
-
-G_hist, D_hist = train_gan(
+train_gan(
     X=X_torch,
     G=G_cond,
     D=D_cond,
@@ -168,7 +167,7 @@ X_fake_cond = G_cond.generate_samples(20000, c)
 ```
 To save the results of training, add a `save_path` argument, e.g.
 ```python
-G_hist, D_hist = train_gan(
+train_gan(
   X=X_torch,
   G=G_cond,
   D=D_cond,

@@ -63,13 +63,13 @@ def save_gan_checkpoint(
           save_path: str,
           G: Generator,
           D: Discriminator,
-          training_configs: dict | None = None):
-     if save_path is not None:
-        torch.save({
-            "training_configs": training_configs,
-            "G_config": G.init_args,
-            "D_config": D.init_args,
-            "G_state_dict": G.state_dict(),
-            "D_state_dict": D.state_dict()
+          training_configs: dict | None = None
+          ):
+      torch.save({
+           "training_configs": training_configs,
+           "G_config": G.init_args,
+           "D_config": D.init_args,
+           "G_state_dict": G.state_dict(),
+           "D_state_dict": D.state_dict()
         }, save_path)
 
