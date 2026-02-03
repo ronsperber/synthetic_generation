@@ -20,16 +20,16 @@ def test_feature_matching_changes_generator_GAN():
     G_base_params = [p.clone() for p in G.parameters()]
 
     torch.manual_seed(42)
-    train_gan(loader, G, D, batch_size=8, epochs=1)
+    train_gan(X=loader, G=G, D=D, batch_size=8, epochs=1)
 
     torch.manual_seed(42)
-    train_gan(loader, G_fm_1, D_fm_1, batch_size=8, epochs=1, lambda_fm_1=100)
+    train_gan(X=loader, G=G_fm_1, D=D_fm_1, batch_size=8, epochs=1, lambda_fm_1=100)
 
     torch.manual_seed(42)
-    train_gan(loader, G_fm_2, D_fm_2, batch_size=8, epochs=1, lambda_fm_2=300000)
+    train_gan(X=loader, G=G_fm_2, D=D_fm_2, batch_size=8, epochs=1, lambda_fm_2=300000)
 
     torch.manual_seed(42)
-    train_gan(loader, G_fm_both, D_fm_both, batch_size=8, epochs=1, lambda_fm_1=100, lambda_fm_2=300000)
+    train_gan(X=loader, G=G_fm_both, D=D_fm_both, batch_size=8, epochs=1, lambda_fm_1=100, lambda_fm_2=300000)
 
     no_fm_params = [p.clone() for p in G.parameters()]
     fm_1_params = [p.clone() for p in G_fm_1.parameters()]
@@ -64,16 +64,16 @@ def test_feature_matching_changes_generator_WGAN():
     G_base_params = [p.clone() for p in G.parameters()]
 
     torch.manual_seed(42)
-    train_wgan_gp(loader, G, D, batch_size=8, epochs=1)
+    train_wgan_gp(X=loader, G=G, D=D, batch_size=8, epochs=1)
 
     torch.manual_seed(42)
-    train_wgan_gp(loader, G_fm_1, D_fm_1, batch_size=8, epochs=1, lambda_fm_1=100)
+    train_wgan_gp(X=loader, G=G_fm_1, D=D_fm_1, batch_size=8, epochs=1, lambda_fm_1=100)
 
     torch.manual_seed(42)
-    train_wgan_gp(loader, G_fm_2, D_fm_2, batch_size=8, epochs=1, lambda_fm_2=300000)
+    train_wgan_gp(X=loader, G=G_fm_2, D=D_fm_2, batch_size=8, epochs=1, lambda_fm_2=300000)
 
     torch.manual_seed(42)
-    train_wgan_gp(loader, G_fm_both, D_fm_both, batch_size=8, epochs=1, lambda_fm_1=100, lambda_fm_2=300000)
+    train_wgan_gp(X=loader, G=G_fm_both, D=D_fm_both, batch_size=8, epochs=1, lambda_fm_1=100, lambda_fm_2=300000)
 
     no_fm_params = [p.clone() for p in G.parameters()]
     fm_1_params = [p.clone() for p in G_fm_1.parameters()]

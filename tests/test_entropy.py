@@ -52,11 +52,11 @@ def test_entropy_changes_generator_GAN():
     D_ent = copy.deepcopy(D)
 
     torch.manual_seed(42)
-    train_gan(loader, G, D, epochs=1)
+    train_gan(X=loader, G=G, D=D, epochs=1)
     torch.manual_seed(42)
-    train_gan(loader, G_copy, D_copy, epochs=1)
+    train_gan(X=loader, G=G_copy, D=D_copy, epochs=1)
     torch.manual_seed(42)
-    train_gan(loader, G_ent, D_ent, lambda_entropy=100, epochs=1)
+    train_gan(X=loader, G=G_ent, D=D_ent, lambda_entropy=100, epochs=1)
     no_ent_params = [p.clone() for p in G.parameters()]
     copy_params = [p.clone() for p in G_copy.parameters()]
     ent_params = [p.clone() for p in G_ent.parameters()]
