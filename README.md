@@ -1,362 +1,158 @@
 # Synthetic Data Generation
 
-This repository contains implementations of:
-- vanilla GANs
-- conditional GANs
-- WGAN-GP
-- conditional WGAN-GP
-- Diffusion
-- Diffusion with conditionals (flat or embedded)
+This repository provides tools for generating synthetic data for tabular or low-dimensional datasets using fully connected neural networks.
 
-The focus is on **synthetic data generation for low-dimensional or tabular datasets**, using fully connected neural networks.  
+Supported generative models include:
 
----
+GANs (vanilla, conditional)
+
+WGAN-GP (standard and conditional)
+
+Diffusion models (standard and conditional)
+
+A key design feature is the Process API, which provides a unified interface for training, generating samples, and saving/loading models.
 
 ## Repository Structure
+### GANs
 
 - `src/synthetic_generation/gan/models.py`
-  
-  Contains classes for a **Generator** and **Discriminator (or Critic)**.  
-  These are fully connected feed-forward networks built from linear layers and nonlinear activation functions, with optional conditional inputs. There is also an OutputHead dataclass with dims, activation, decode, and name.
-  For the output head, `activation` is used during training, and `decode` used at inference.
-  The `Generator` exposes a `.generate()` method that handles noise sampling and device placement automatically
+Fully connected Generator and Discriminator (Critic) classes, optionally conditional.
+Includes `OutputHead` for training/inference activations. The Generator exposes `.generate_samples()` to produce synthetic data easily.
 
 - `src/synthetic_generation/gan/training.py`
-   
-  Contains training loops for:
-  - standard GANs (`train_gan`)
+Training loops for:
+
+  - Standard GANs (`train_gan`)
   - WGAN-GP (`train_wgan_gp`)
-  These both can return loss histories by setting `return_history=True`
 
-- `src/synthetic_generation/gan/utils.py`
-  
-  GAN/WGAN-GP utility functions, including:
-  - `gradient_penalty` for WGAN-GP
-  - `cov_matrix` and `cov_penalty` for use for feature matching penalties
+Both can return loss histories via return_history=True.
+
 - `src/synthetic_generation/gan/model_saving.py`
+Functions to save/load models:
 
-  GAN/WGAN-GP functions to save and load model information
-  - `save_gan_checkpoint` to save information on G,D and any desired configs
-  - `load_gan_checkpoint` to create a G, D from saved data
+  - `save_gan_checkpoint()`
+  - `load_gan_checkpoint()`
 
 - `src/synthetic_generation/gan/process.py`
-  
-  Contains wrapper classes to hold model pairs, train, save, load
-  - `BaseGanProcess` contains the model info, has load and save methods common to both GAN and WGAP-GP
-  - `GANProcess` specific to GANs with a `train` method using `train_gan`
-  - `WGANProcess` specific to WGAN-GPs with a `train` method using `train_wgan_gp`
-  
+Wrapper classes for simplified workflows:
+
+  -`BaseGanProcess`: holds model pair and provides `.save()` and `.load()`
+
+  -`GANProcess` / `WGANProcess`: adds `.train()` using the respective training loops, and `.train_save()`
+### Diffusion
 
 - `src/synthetic_generation/diffusion/models.py`
-  
-  Diffusion models including
-  - `SinusoidalTimeEmbedding` : to use sinusoidal embedding for time
-  - `BaseMLP` : basic multi-layer perceptron class used for the diffusion model and a time embedding
-  - `MLPTimeEmbedding` : a class to use a multi-layer perceptron to embed the time dimension
-  - `DiffusionModel` : a class to use for diffusion to predict noise
-  - `DiffusionProcess` : a class that holds a model attribute and has methods `train` to train the model on data, `generate_samples` to generate samples using DDPM and `generate_samples_ddim` to generate samples using DDIM. It can return loss history by setting `return_history=True`
+
+  - `DiffusionNet`: core model to predict noise
+
+  - `DiffusionProcess`: wrapper class with `.train()`, `.generate_samples()`, `.generate_samples_ddim()`, `.save()`, `.load_process()`
+
+  - Time embedding options: `SinusoidalTimeEmbedding`, `MLPTimeEmbedding`
+
+  - `BaseMLP` : Base MLP
 
 - `src/synthetic_generation/diffusion/schedules.py`
-  
-  Has functions to generate schedules for use with diffusion including `linear_beta_schedule` and `cosine_beta_schedule`
+Beta schedules: `linear_beta_schedule`, `cosine_beta_schedule`
 
 - `src/synthetic_generation/diffusion/sampling.py`
-  
-  Functions for sampling in diffusion:
-  - `q_sample` : used to sample `x_t` from `x_0` and t
-  - `p_sample` : used to sample `x_{t-1}` from `x_t` for DDPM
-  - `ddim_sample` : used to sample for DDIM 
+Sampling functions: `q_sample`, `p_sample`, `ddim_sample`
 
-- `src/synthetic_generation/diffuision/model_saving.py`
-  
-  Contains functions used to save/load a diffusion process
-  - `save_diffusion_checkpoint` : used to save a diffusion process
-  - `load_diffusion_checkpoint` : used to load a saved diffusion process
+- `src/synthetic_generation/diffusion/model_saving.py`
+Functions to save/load a DiffusionProcess:
 
-- `src/synthetic_generation/data_utils.py`
-  
-  General data utilities, including :
-  - `make_dataloader` to take a data set or data set + conditional and turn into a data loader
+  - `save_diffusion_checkpoint()`
 
-- `Notebooks/GAN`
-  
-  Sample notebooks illustrating
-  - Vanilla GAN
-  - Conditional GAN
-  - WGAN-GP
-  - WGAN-GP with conditional
-- `Notebooks/Diffusion`
-  
-  Sample notebooks illustrating
-  - Simple basic diffusion 
-  - Diffusion with conditional using a flat tensor conditional
-  - Diffusion with conditional using a conditional embedding
-  - Conditional diffusing using a cosine beta schedule (both unscaled and scaled)
+  - `load_diffusion_checkpoint()`
 
----
+### Utilities
+
+`src/synthetic_generation/data_utils.py`
+General utilities including make_dataloader() for tensor or conditional datasets.
+
+`Notebooks/`
+Contains example notebooks for GANs and Diffusion, illustrating vanilla, conditional, and scaled versions.
 
 ## Installation
-Clone the repository and change directories to it
 ```bash
 git clone https://github.com/ronsperber/synthetic_generation.git
 cd synthetic_generation
-```
-
-Install required dependencies and the package in editable mode with:
-
-```bash
 pip install -r requirements.txt
 pip install -e .
 ```
 
-## Example Usage for GANs
+## Example Usage
+### GANs
 
-### Training a vanilla GAN
 ```python
-# load libraries
-from sklearn.datasets import make_blobs
-import torch
 from synthetic_generation.gan.models import Generator, Discriminator
-from synthetic_generation.gan.training import train_gan
-
-# create a toy dataset
-X, labels, centers = make_blobs(
-    n_samples = 20000,
-    n_features = 2,
-    return_centers = True
-)
-# convert to a PyTorch tensor
-X_torch = torch.tensor(X).float()
- # get a Generator with 2 dimensional noise
-G = Generator(
-    noise_dim=2,
-    num_hidden_layers=2,
-    out_dim=2,
-    hidden_dims=(128,128)
-)
-# get a discriminator
-D = Discriminator(
-    feature_dim=2,
-    num_hidden_layers=2,
-    hidden_dims=(128,128)
-)
-
-# train the models
-train_gan(
-    X=X_torch,
-    G=G,
-    D=D
-)
-
-# create a fake data set
-X_fake = G.generate_samples(10000)
-```
-### Training a conditional GAN
-The data is as we saw in the previous example (`X, centers, labels`)
-
-```python
-# Now a conditional GAN on the same data
-# one hot encode the labels
-one_hot = torch.nn.functional.one_hot(torch.tensor(labels), num_classes=3).float()
-# assign each sample its cluster center
-centers_per_sample = torch.tensor(centers)[labels]
-# combine the centers with encoded labels
-c = torch.cat([centers_per_sample, one_hot], dim=1).float()
-# get the number of conditional dimensions
-conditional_dim = c.shape[1]
-
-# create a Generator/Discriminator pair that will include those dimensions
-G_cond = Generator(
-    noise_dim = 2,
-    num_hidden_layers = 2,
-    out_dim = 2,
-    hidden_dims=(128,128),
-    use_conditional=True,
-    conditional_dim=conditional_dim
-)
-
-D_cond = Discriminator(
-    feature_dim=2,
-    num_hidden_layers=2,
-    hidden_dims=(128,128),
-    use_conditional=True,
-    conditional_dim=conditional_dim
-)
-train_gan(
-    X=X_torch,
-    G=G_cond,
-    D=D_cond,
-    c=c
-)
-
-# generate fake data from this
-X_fake_cond = G_cond.generate_samples(20000, c)
-```
-To save the results of training, use the `save_gan_checkpoint`
-```python
-from synthetic_generation.gan.model_saving import save_gan_checkpoint
-save_gan_checkpoint(
-  path='cond_gan.pt',
-  G=G,
-  D=D
-  train_configs={'epochs':200} # add whatever training configurations you like here
-)
-```
-
-To then load the model, we use the `load_gan_checkpoint` as follows
-```python
-from synthetic_generation.gan.model_saving import load_gan_checkpoint
-G,D,configs = load_gan_checkpoint(
-  path = 'cond_gan.pt'
-)
-```
-`G` will be a copy of the trained Generator, `D` will be a copy of the trained Discriminator, and `configs` will be a dictionary of configs saved. 
-### WGAN-GP notes
-
-To train a WGAN-GP use `train_wgan_gp()` instead of `train_gan()`
-
-For best results, it is recommended to:
-* scale data to be in the range [-1,1]
-* use a `tanh` output activation for the Generator
-
-To do this we will need a custom output head
-```python
-import torch.nn as nn
-from synthetic_generation.gan.models import OutputHead
-heads = [OutputHead(dim=2,activation=nn.Tanh, decode=nn.Tanh, name="scaled_output")]
-G = Generator(
-    noise_dim=2,
-    num_hidden_layers=2,
-    output_heads=heads,
-    hidden_dims=(128, 128)
-)
-```
-
-## Example usage for Diffusion
-```python
-# load libraries
-from sklearn.datasets import make_blobs
+from synthetic_generation.gan.process import GANProcess
 import torch
-import torch.nn.functional as F
-import numpy as np
-from sklearn.preprocessing import StandardScaler
-from synthetic_generation.diffusion.models import MLPTimeEmbedding, DiffusionNet, DiffusionProcess, MLPTimeEmbedding
-from synthetic_generation.diffusion.schedules import linear_beta_schedule, cosine_beta_schedule
 
-# for all of these we will use 1000 time steps
-NUM_TIMESTEPS = 1000
-# for all samples we will generate 5000 samples
-NUM_SAMPLES = 5000
-# create data set
-X, labels, centers = make_blobs(
-    n_samples = 20000,
-    n_features = 2,
-    return_centers = True
-)
-# one hot encode the labels
-one_hot = F.one_hot(torch.tensor(labels), num_classes=3).float()
-# assign each sample its cluster center
-centers_per_sample = torch.tensor(centers)[labels]
-# combine the centers with encoded labels
-c = torch.cat([centers_per_sample, one_hot], dim=1)
-# start with an example with no conditional
-# note here, when we don't specify the time embedding, it will default to a simple MLPTimeEmbedding
-model = DiffusionNet(
-  data_dim=2,
-  num_hidden_layers=4,
-  hidden_dims=(256, 256),
-  time_embedding=MLPTimeEmbedding(num_timesteps=NUM_TIMESTEPS)
-)
-# convert data to a tensor
-X_train = torch.Tensor(X).float()
-# create a diffusion process
-process = DiffusionProcess(
-  model=model,
-  betas=linear_beta_schedule(num_timesteps=NUM_TIMESTEPS),
-  num_timesteps=NUM_TIMESTEPS,
-  data_dim=2
-)
-# train the data with default settings
-process.train(X=X_train)
+# Example dataset
+X_train = torch.randn(1000, 2)
 
-# generate a sample data set
-X_fake = process.generate_samples(
-  num_samples=NUM_SAMPLES
-)
+# Create models
+G = Generator(noise_dim=2, num_hidden_layers=2, hidden_dims=(128,128), out_dim=2)
+D = Discriminator(feature_dim=2, num_hidden_layers=2, hidden_dims=(128,128))
 
-# now we do a conditional version of things
-model_cond = DiffusionNet(
-  data_dim=2,
-  conditional_dim = c.shape[1],
-  num_hidden_layers=4,
-  time_embedding=MLPTimeEmbedding(num_timesteps=NUM_TIMESTEPS)
-)
+# Create GAN process
+process = GANProcess(G=G, D=D)
 
-process_cond = DiffusionProcess(
-  model=model_cond,
-  betas=linear_beta_schedule(num_timesteps=NUM_TIMESTEPS),
-  num_timesteps=NUM_TIMESTEPS,
-  data_dim=2
-)
-# train the data
-process_cond.train(
-  X=X_train,
-  c=c
-)
-# if we only want NUM_SAMPLES samples generated, we pick a random subset of c to use of that size
-idx = np.random.default_rng(42).choice(len(c), size=NUM_SAMPLES, replace=False)
-c_sample = c[idx]
+# Train
+process.train(X_train)
 
-X_fake_cond = process_cond.generate_samples(
-  num_samples=NUM_SAMPLES,
-  c=c_sample
-)
+# Generate samples
+X_fake = process.generate_samples(num_samples=1000)
+
+# Save process
+process.save("gan_checkpoint.pt")
+
+# Load process
+process_loaded = GANProcess.load("gan_checkpoint.pt")
 ```
-Note: If a cosine schedule is to be used, it is **strongly recommended** to scale the data. (All data may work better if scaled, but due to the high betas at the end of the cosine schedule, it can really cause poor results if not scaled)
 
+### Diffusion
 ```python
-scaler = StandardScaler()
-X_scaled = scaler.fit_transform(X)
-centers_scaled = scaler.transform(centers_per_sample)
-c_scaled = torch.cat([torch.tensor(centers_scaled), one_hot], dim=1).float()
-X_train_scaled = torch.Tensor(X_scaled)
-# make the model and process
-model_cond_cos = DiffusionNet(
-  data_dim=2,
-  conditional_dim = c_scaled.shape[1],
-  num_hidden_layers=4,
-  time_embedding=MLPTimeEmbedding(num_timesteps=NUM_TIMESTEPS)
+from synthetic_generation.diffusion.models import DiffusionNet, DiffusionProcess, MLPTimeEmbedding
+from synthetic_generation.diffusion.schedules import linear_beta_schedule
+import torch
+
+NUM_TIMESTEPS = 1000
+NUM_SAMPLES = 5000
+
+X_train = torch.randn(2000, 2)
+
+# Create model
+model = DiffusionNet(data_dim=2, num_hidden_layers=4, hidden_dims=(256,256), time_embedding=MLPTimeEmbedding(NUM_TIMESTEPS))
+
+# Create diffusion process
+process = DiffusionProcess(
+    model=model,
+    betas=linear_beta_schedule(NUM_TIMESTEPS),
+    num_timesteps=NUM_TIMESTEPS,
+    data_dim=2
 )
 
-process_cond_cos = DiffusionProcess(
-  model=model_cond,
-  betas=cosine_beta_schedule(num_timesteps=NUM_TIMESTEPS),
-  num_timesteps=NUM_TIMESTEPS,
-  data_dim=2
-)
+# Train
+process.train(X_train)
 
-# train on the scaled data
-process_cond_cos.train(
-  X=X_train_scaled,
-  c=c_scaled
-)
-# get scaled sample c
-c_scaled_sample = c_scaled[idx]
+# Generate samples
+X_fake = process.generate_samples(NUM_SAMPLES)
 
-# create generated data
-X_fake_c_cos = process_cond.generate_samples(
-  num_samples=NUM_SAMPLES,
-  c=c_scaled_sample
-)
-
-# to get it back to the correct scale, we convert back to numpy and use the scaler
-X_fake_c_cos_np = X_fake_c_cos.detach().cpu().numpy()
-X_fake_c_cos_np_gen = scaler.inverse_transform(X_fake_c_cos_np)
+# Save/load
+process.save("diffusion_checkpoint.pt")
+process_loaded = DiffusionProcess.load_process("diffusion_checkpoint.pt")
 ```
-
-
 ## Design Notes and Limitations
-* All models use fully connected layers, convolutional layers are out of scope
-* Conditional information is incorporated via feature concatenation
-* While WGAN-GP often improves stability, it may struggle on certain geometric toy datasets; conditional GANs can perform better in those cases
-* This repository is designed for experimentation and demonstration of GAN-based synthetic data generation, particularly for tabular data. While not a full production framework, the architecture and training loops are intentionally structured to be extensible toward production use with additional validation, monitoring, and data-specific constraints.
+
+  - Fully connected networks only (no convolutions)
+
+  - Conditional information is incorporated via feature concatenation
+
+  - Primarily designed for tabular or low-dimensional data
+
+  - Intended for experimentation and demonstration; production use requires additional validation, monitoring, and constraints
+
+## Extensibility
+
+The framework is designed to be modular, making it straightforward to add new generative models (e.g., VAEs) while keeping the same unified Process API for training, sampling, and checkpointing
