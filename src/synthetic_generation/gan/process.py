@@ -40,10 +40,16 @@ class BaseGanProcess:
         return cls(G, D)
         
 class GANProcess(BaseGanProcess):
-    def train(self, X, c=None, **train_args):
+    def train(self, X: torch.Tensor, c: torch.Tensor | None = None, **train_args):
         self.train_configs = train_gan(G=self.G, D=self.D, X=X, c=c, return_configs=True, **train_args)
+    def train_save(self, save_path: str, X: torch.Tensor,c: torch.Tensor | None = None, **train_args):
+        self.train(X=X, c=c, **train_args)
+        self.save(path=save_path, training_configs=self.train_configs)
 
 
 class WGANProcess(BaseGanProcess):
-    def train(self, X, c=None, **train_args):
+    def train(self, X:torch.Tensor, c: torch.Tensor | None = None, **train_args):
         self.train_configs = train_wgan_gp( G=self.G, D=self.D, X=X, c=c, return_configs=True, **train_args)
+    def train_save(self, save_path: str, X: torch.Tensor,c: torch.Tensor | None = None, **train_args):
+        self.train(X=X, c=c, **train_args)
+        self.save(path=save_path, training_configs=self.train_configs)
