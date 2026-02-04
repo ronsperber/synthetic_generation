@@ -140,6 +140,7 @@ process = DiffusionProcess(
 
 # Train and save
 process.train_save(path="diffusion_checkpoint.pt",X=X_train)
+# Alternately, as with GANs can use process.train() and process.save() separately
 
 # Generate samples
 X_fake = process.generate_samples(NUM_SAMPLES)
