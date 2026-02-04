@@ -119,8 +119,37 @@ class GANProcess(BaseGanProcess):
         self.save(path=save_path, training_configs=self.train_configs)
 
 class WGANProcess(BaseGanProcess):
-    def train(self, X:torch.Tensor, c: torch.Tensor | None = None, **train_args):
+    """
+    WGAN process class
+    """
+    def train(self, X:torch.Tensor | DataLoader, c: torch.Tensor | None = None, **train_args):
+        """
+        training the Generator and Discriminator on a dataset
+        and saving the training configs
+        Parameters
+        ---------
+        X : torch.Tensor | DataLoader
+            data used to train
+        c : torch.Tensor | None
+            optional conditional tensor
+        **train_args:
+            additional arguments for training
+        """
         self.train_configs = train_wgan_gp( G=self.G, D=self.D, X=X, c=c, return_configs=True, **train_args)
     def train_save(self, save_path: str, X: torch.Tensor,c: torch.Tensor | None = None, **train_args):
+        """
+        training the Generator and Discriminator on a dataset
+        and saving the training configs and saving the process
+        Parameters
+        ---------
+        save_path: str
+            where to save the process
+        X : torch.Tensor | DataLoader
+            data used to train
+        c : torch.Tensor | None
+            optional conditional tensor
+        **train_args:
+            additional arguments for training
+        """
         self.train(X=X, c=c, **train_args)
         self.save(path=save_path, training_configs=self.train_configs)
