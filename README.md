@@ -118,7 +118,7 @@ process.save(path="gan_checkpoint.pt")
 ### Diffusion
 ```python
 from synthetic_generation.diffusion.models import DiffusionNet, MLPTimeEmbedding
-from synthetic_generation.process import DiffusionProcess
+from synthetic_generation.diffusion.process import DiffusionProcess
 from synthetic_generation.diffusion.schedules import linear_beta_schedule
 import torch
 
