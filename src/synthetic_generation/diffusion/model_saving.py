@@ -1,6 +1,10 @@
 import torch
-import types
-from .models import DiffusionProcess, MLPTimeEmbedding, SinusoidalTimeEmbedding, DiffusionNet
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .process import DiffusionProcess
+
+from .models import MLPTimeEmbedding, SinusoidalTimeEmbedding, DiffusionNet
 
 BASE_MODEL_CLASSES = {
     "MLPTimeEmbedding" : MLPTimeEmbedding,
@@ -18,7 +22,7 @@ BASE_ACTIVATIONS = {
 }
 
 
-def save_diffusion_checkpoint(process: DiffusionProcess, path: str, train_config : dict | None = None):
+def save_diffusion_checkpoint(process:"DiffusionProcess", path: str, train_config : dict | None = None):
     """
     Save a DiffusionProcess checkpoint with config + state_dict
     Paramters
@@ -145,7 +149,7 @@ def load_diffusion_checkpoint(path: str, model_classes: dict = None, activation_
     if config["activation"] in activation_dict:
         activation = activation_dict[config["activation"]]
     else:
-        raise ValueError(f"{config["activation"]} is not in the dictionary of activations")
+        raise ValueError(f"{config['activation']} is not in the dictionary of activations")
     model = model_cls(
         data_dim=config["data_dim"],
         conditional_dim=config["conditional_dim"],
@@ -157,12 +161,13 @@ def load_diffusion_checkpoint(path: str, model_classes: dict = None, activation_
     )
     model.load_state_dict(checkpoint["model_state_dict"])
     train_config = checkpoint.get("train_config", None)
-    # Rebuild DiffusionProcess
-    process = DiffusionProcess(
-        model=model,
-        betas=checkpoint["betas"],
-        num_timesteps=checkpoint["num_timesteps"],
-        data_dim=checkpoint["data_dim"]
-    )
-
-    return process, config, train_config
+    betas=checkpoint["betas"]
+    num_timesteps=checkpoint["num_timesteps"]
+    data_dim=checkpoint["data_dim"]
+    process_args = {
+        "model": model,
+        "betas": betas,
+        "num_timesteps": num_timesteps,
+        "data_dim": data_dim
+    }
+    return process_args, config, train_config

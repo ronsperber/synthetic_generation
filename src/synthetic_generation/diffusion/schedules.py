@@ -43,9 +43,9 @@ def cosine_beta_schedule(
         return torch.clip(betas, 0.0001, 0.9999)
 
 def linear_beta_schedule(
+                num_timesteps: int = 1000,
                 beta_start: float = 1e-4,
-                beta_end: float = 0.02,
-                num_timesteps: int = 1000
+                beta_end: float = 0.02
 ) -> torch.Tensor:
         """
         compute linear schedule betas
