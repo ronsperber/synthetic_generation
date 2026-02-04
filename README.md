@@ -45,11 +45,12 @@ Wrapper classes for simplified workflows:
 
   - `DiffusionNet`: core model to predict noise
 
-  - `DiffusionProcess`: wrapper class with `.train()`, `.generate_samples()`, `.generate_samples_ddim()`, `.save()`, `.load_process()`
-
   - Time embedding options: `SinusoidalTimeEmbedding`, `MLPTimeEmbedding`
 
   - `BaseMLP` : Base MLP
+
+- `src/synthetic_generation/diffusion/process.py`
+  holds `DiffusionProcess`: wrapper class with `.train()`, `.generate_samples()`, `.generate_samples_ddim()`, `.save()`, `.load_process()`
 
 - `src/synthetic_generation/diffusion/schedules.py`
 Beta schedules: `linear_beta_schedule`, `cosine_beta_schedule`
@@ -113,7 +114,8 @@ process_loaded = GANProcess.load("gan_checkpoint.pt")
 
 ### Diffusion
 ```python
-from synthetic_generation.diffusion.models import DiffusionNet, DiffusionProcess, MLPTimeEmbedding
+from synthetic_generation.diffusion.models import DiffusionNet, MLPTimeEmbedding
+from synthetic_generation.process import DiffusionProcess
 from synthetic_generation.diffusion.schedules import linear_beta_schedule
 import torch
 
