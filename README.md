@@ -99,19 +99,22 @@ D = Discriminator(feature_dim=2, num_hidden_layers=2, hidden_dims=(128,128))
 # Create GAN process
 process = GANProcess(G=G, D=D)
 
-# Train
-process.train(X_train)
+# Train and save
+process.train_save(path="gan_checkpoint.pt", X=X_train)
 
 # Generate samples
 X_fake = process.generate_samples(num_samples=1000)
-
-# Save process
-process.save("gan_checkpoint.pt")
 
 # Load process
 process_loaded = GANProcess.load("gan_checkpoint.pt")
 ```
 
+Note: training and saving can be done separately, e.g.
+
+```python
+process.train(X=X_train)
+process.save(path="gan_checkpoint.pt")
+```
 ### Diffusion
 ```python
 from synthetic_generation.diffusion.models import DiffusionNet, MLPTimeEmbedding
@@ -135,14 +138,12 @@ process = DiffusionProcess(
     data_dim=2
 )
 
-# Train
-process.train(X_train)
+# Train and save
+process.train_save(path="diffusion_checkpoint.pt",X=X_train)
 
 # Generate samples
 X_fake = process.generate_samples(NUM_SAMPLES)
 
-# Save/load
-process.save("diffusion_checkpoint.pt")
 process_loaded = DiffusionProcess.load_process("diffusion_checkpoint.pt")
 ```
 ## Design Notes and Limitations
