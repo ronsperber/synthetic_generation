@@ -13,6 +13,7 @@ from torch.utils.data import DataLoader
 import numpy as np
 from .sampling import p_sample, q_sample, ddim_sample
 from .schedules import linear_beta_schedule
+from .model_saving import save_diffusion_checkpoint, load_diffusion_checkpoint
 from synthetic_generation.data_utils import make_dataloader
 # types used for the classes
 LayerDims = tuple[int, int]
@@ -351,7 +352,7 @@ class DiffusionProcess:
         self.model = model
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model.to(self.device)
-
+        self.train_config = None # set in case we try to save the model before training
         # if the model has a data_dim we use that and ignore data_dim passed (if any)
         if hasattr(model, "data_dim"):
             self.data_dim = model.data_dim
@@ -412,6 +413,11 @@ class DiffusionProcess:
             (Optional) epoch_losses : list
                 list of tuples (epoch, epoch_loss)
         """
+        self.train_config = {
+            "epochs": epochs,
+            "batch_size": batch_size,
+            "lr" : lr
+        }
         if epochs <= 0:
             raise ValueError("Number of epochs must be positive")
         if isinstance(X, torch.Tensor):
@@ -571,4 +577,104 @@ class DiffusionProcess:
             )
     
         return x.cpu()
-  
+    
+    def save(
+            self,
+            path: str,
+    ):
+        """
+        method to save process
+        Parameters
+        ----------
+            path : str
+                location to save the process
+        """
+        save_diffusion_checkpoint(process=self, path=path, train_config=self.train_config)
+
+    def train_save(
+            self,
+            path: str,
+            X: torch.Tensor | DataLoader,
+            c: torch.Tensor | None = None,
+            **kwargs
+    ):
+        """
+        method to train the model on data and save to a checkpoint
+        Parameters
+        path : str
+            path to save checkpoint
+        X : torch.Tensor | DataLoader
+            data to train on
+        c : torch.Tensor | None
+            conditional tensor when not None
+        **kwargs:
+            additional arguments to use in train
+        """
+
+        history = self.train(X=X, c=c, **kwargs) 
+        self.save(path=path)
+        return history
+    def save(
+            self,
+            path: str,
+    ):
+        """
+        method to save process
+        Parameters
+        ----------
+            path : str
+                location to save the process
+        """
+        save_diffusion_checkpoint(process=self, path=path, train_config=self.train_config)
+
+    def train_save(
+            self,
+            path: str,
+            X: torch.Tensor | DataLoader,
+            c: torch.Tensor | None = None,
+            **kwargs
+    ):
+        """
+        method to train the model on data and save to a checkpoint
+        Parameters
+        path : str
+            path to save checkpoint
+        X : torch.Tensor | DataLoader
+            data to train on
+        c : torch.Tensor | None
+            conditional tensor when not None
+        **kwargs:
+            additional arguments to use in train
+        """
+
+        history = self.train(X=X, c=c, **kwargs) 
+        self.save(path=path)
+        return history
+        
+    @classmethod
+    def load_process(
+        cls,
+        path: str,
+        model_classes: dict | None = None,
+        activation_dict: dict | None = None):
+        """
+        method to create a new process from a checkpoint
+        Parameters
+        ----------
+        path: str
+            path where the checkpoint was saved to
+        model_classes : dict | None
+            optional dict of custom model classes with "name": class
+        activation_dict : dict | None
+            optional dict of activations with "name": activation
+        Returns
+        -------
+        process : DiffusionProcess
+            the process built from the checkpoint stored
+        """
+        process = load_diffusion_checkpoint(
+            path=path,
+            model_classes=model_classes,
+            activation_dict=activation_dict
+            )
+        return process

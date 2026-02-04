@@ -18,9 +18,16 @@ BASE_ACTIVATIONS = {
 }
 
 
-def save_diffusion_checkpoint(process, path: str):
+def save_diffusion_checkpoint(process: DiffusionProcess, path: str, train_config : dict | None = None):
     """
     Save a DiffusionProcess checkpoint with config + state_dict
+    Paramters
+    process: DiffusionProcess
+        process to be saved
+    path : str
+        path to save the process
+    train_config : dict | None
+        optional dict with train configs
     """
     model = process.model
 
@@ -73,19 +80,29 @@ def save_diffusion_checkpoint(process, path: str):
         "config": config,
         "betas": process.betas.cpu(),  # save on CPU
         "num_timesteps": process.num_timesteps,
-        "data_dim": process.data_dim
+        "data_dim": process.data_dim,
+        "train_config" : train_config
     }
 
     torch.save(checkpoint, path)
 
 
-def load_diffusion_checkpoint(path: str, model_classes: dict = None, activation_dict: dict = None):
+def load_diffusion_checkpoint(path: str, model_classes: dict = None, activation_dict: dict | None = None):
     """
     Load a DiffusionProcess checkpoint.
-    
-    model_classes: optional dictionary mapping class_name -> class
+    Parameters
+    ----------
+    path : str
+        location of checkpoint
+    model_classes: dict | None
+        optional dictionary mapping class_name -> class
         used if you have custom MLPTimeEmbedding or conditional embedding classes
+    activation_dict : dict | None
+        optional dictionary mapping activation_name -> activation
+        used if you have custom activations not listed
     """
+    # start with base model classes and activations dicts
+    # and add the optional ones passed
     model_classes = BASE_MODEL_CLASSES | (model_classes or {})
     activation_dict = BASE_ACTIVATIONS | (activation_dict or {})
     checkpoint = torch.load(path, map_location="cpu")
@@ -139,7 +156,7 @@ def load_diffusion_checkpoint(path: str, model_classes: dict = None, activation_
         activation=activation
     )
     model.load_state_dict(checkpoint["model_state_dict"])
-
+    train_config = checkpoint.get("train_config", None)
     # Rebuild DiffusionProcess
     process = DiffusionProcess(
         model=model,
@@ -148,4 +165,4 @@ def load_diffusion_checkpoint(path: str, model_classes: dict = None, activation_
         data_dim=checkpoint["data_dim"]
     )
 
-    return process, config
+    return process, config, train_config
