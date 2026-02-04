@@ -65,11 +65,24 @@ def save_gan_checkpoint(
           D: Discriminator,
           training_configs: dict | None = None
           ):
-      torch.save({
-           "training_configs": training_configs,
-           "G_config": G.init_args,
-           "D_config": D.init_args,
-           "G_state_dict": G.state_dict(),
-           "D_state_dict": D.state_dict()
+    """
+    function to save a Generator and Discriminator/Critic with optional training configs
+    Parameters
+    ----------
+    save_path : str
+        where to save the models
+    G : Generator
+        the Generator being saved
+    D : Discriminator
+        The Discriminator/Critic being saved
+    training_configs Dict | None
+        optional dict with configs used in training
+    """
+    torch.save({
+        "training_configs": training_configs,
+        "G_config": G.init_args,
+        "D_config": D.init_args,
+        "G_state_dict": G.state_dict(),
+        "D_state_dict": D.state_dict()
         }, save_path)
 
