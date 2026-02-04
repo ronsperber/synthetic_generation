@@ -3,7 +3,8 @@
 import pytest
 import torch
 from torch.utils.data import DataLoader, TensorDataset
-from synthetic_generation.diffusion.models import DiffusionNet, DiffusionProcess
+from synthetic_generation.diffusion.models import DiffusionNet
+from synthetic_generation.diffusion.process import DiffusionProcess
 from synthetic_generation.diffusion.schedules import linear_beta_schedule, cosine_beta_schedule
 
 # ------------------------------

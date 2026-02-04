@@ -1,6 +1,7 @@
 import torch
 import pytest
-from synthetic_generation.diffusion.models import DiffusionNet, DiffusionProcess, MLPTimeEmbedding, SinusoidalTimeEmbedding
+from synthetic_generation.diffusion.models import DiffusionNet, MLPTimeEmbedding, SinusoidalTimeEmbedding
+from synthetic_generation.diffusion.process import DiffusionProcess
 from synthetic_generation.diffusion.schedules import linear_beta_schedule
 from synthetic_generation.diffusion.model_saving import save_diffusion_checkpoint, load_diffusion_checkpoint
 
@@ -21,7 +22,8 @@ def test_diffusion_save_load_no_conditional(tmp_path):
 
     save_path = tmp_path / "checkpoint.pt"
     save_diffusion_checkpoint(process, save_path)
-    loaded_process, _ = load_diffusion_checkpoint(save_path)
+    loaded_args, _, _ = load_diffusion_checkpoint(save_path)
+    loaded_process = DiffusionProcess(**loaded_args)
 
     # Forward pass check
     X = torch.randn(2,4)
@@ -51,7 +53,8 @@ def test_diffusion_save_load_identity_conditional(tmp_path):
     )
     save_path = tmp_path / "checkpoint_identity.pt"
     save_diffusion_checkpoint(process, save_path)
-    loaded_process, _ = load_diffusion_checkpoint(save_path)
+    loaded_process_args, _, _= load_diffusion_checkpoint(save_path)
+    loaded_process = DiffusionProcess(**loaded_process_args)
 
     X = torch.randn(2,4)
     c = torch.randn(2,3)
@@ -79,7 +82,9 @@ def test_diffusion_save_load_sinusoidal_time(tmp_path):
     )
     save_path = tmp_path / "checkpoint_sinusoidal.pt"
     save_diffusion_checkpoint(process, save_path)
-    loaded_process, _ = load_diffusion_checkpoint(save_path)
+    loaded_process_args, _ , _= load_diffusion_checkpoint(save_path)
+    loaded_process = DiffusionProcess(**loaded_process_args)
+
 
     X = torch.randn(2,4)
     t = torch.tensor([0,1])
@@ -119,7 +124,8 @@ def test_diffusion_save_load(tmp_path):
     save_diffusion_checkpoint(process, save_path)
 
     # Load checkpoint
-    loaded_process, config = load_diffusion_checkpoint(save_path)
+    loaded_process_args, _, _ = load_diffusion_checkpoint(save_path)
+    loaded_process = DiffusionProcess(**loaded_process_args)
 
     # Check basic properties
     assert isinstance(loaded_process, DiffusionProcess)
