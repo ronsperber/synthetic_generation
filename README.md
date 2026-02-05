@@ -36,9 +36,9 @@ Functions to save/load models:
 - `src/synthetic_generation/gan/process.py`
 Wrapper classes for simplified workflows:
 
-  -`BaseGanProcess`: holds model pair and provides `.save()` and `.load()`
+  - `BaseGanProcess`: holds model pair and provides `.save()` and `.load()`
 
-  -`GANProcess` / `WGANProcess`: adds `.train()` using the respective training loops, and `.train_save()`
+  - `GANProcess` / `WGANProcess`: adds `.train()` using the respective training loops, and `.train_save()`
 ### Diffusion
 
 - `src/synthetic_generation/diffusion/models.py`
@@ -85,12 +85,19 @@ pip install -e .
 ### GANs
 
 ```python
+from sklearn.datasets import make_blobs
 from synthetic_generation.gan.models import Generator, Discriminator
 from synthetic_generation.gan.process import GANProcess
 import torch
 
 # Example dataset
-X_train = torch.randn(1000, 2)
+X, labels, centers = make_blobs(
+    n_samples = 20000,
+    n_features = 2,
+    return_centers = True
+)
+# convert to a PyTorch tensor
+X_train = torch.tensor(X).float()
 
 # Create models
 G = Generator(noise_dim=2, num_hidden_layers=2, hidden_dims=(128,128), out_dim=2)
@@ -107,6 +114,42 @@ X_fake = process.generate_samples(num_samples=1000)
 
 # Load process
 process_loaded = GANProcess.load("gan_checkpoint.pt")
+
+# a conditional version of it
+# one hot encode the labels
+one_hot = torch.nn.functional.one_hot(torch.tensor(labels), num_classes=3).float()
+# assign each sample its cluster center
+centers_per_sample = torch.tensor(centers)[labels]
+# combine the centers with encoded labels
+c = torch.cat([centers_per_sample, one_hot], dim=1).float()
+# get the number of conditional dimensions
+conditional_dim = c.shape[1]
+G_cond = Generator(
+    noise_dim = 2,
+    num_hidden_layers = 2,
+    out_dim = 2,
+    hidden_dims=(128,128),
+    conditional_dim=conditional_dim
+)
+
+D_cond = Discriminator(
+    feature_dim=2,
+    num_hidden_layers=2,
+    hidden_dims=(128,128),
+    conditional_dim=conditional_dim
+)
+
+#create conditional GAN process
+process_cond = GANProcess(G=G_cond, D=D_cond)
+
+# train
+process_cond.train(
+  X=X_train,
+  c=c
+)
+# create fake data
+# note the length of the conditional must be the same as num_samples
+X_fake_cond = process_cond.generate_samples(num_samples=1000, c=c[:1000])
 ```
 
 Note: training and saving can be done separately, e.g.
@@ -117,6 +160,7 @@ process.save(path="gan_checkpoint.pt")
 ```
 ### Diffusion
 ```python
+from sklearn.datasets import make_blobs
 from synthetic_generation.diffusion.models import DiffusionNet, MLPTimeEmbedding
 from synthetic_generation.diffusion.process import DiffusionProcess
 from synthetic_generation.diffusion.schedules import linear_beta_schedule
@@ -125,7 +169,15 @@ import torch
 NUM_TIMESTEPS = 1000
 NUM_SAMPLES = 5000
 
-X_train = torch.randn(2000, 2)
+# Example dataset
+X, labels, centers = make_blobs(
+    n_samples = 20000,
+    n_features = 2,
+    return_centers = True
+)
+# convert to a PyTorch tensor
+X_train = torch.tensor(X).float()
+
 
 # Create model
 model = DiffusionNet(data_dim=2, num_hidden_layers=4, hidden_dims=(256,256), time_embedding=MLPTimeEmbedding(NUM_TIMESTEPS))
@@ -140,12 +192,40 @@ process = DiffusionProcess(
 
 # Train and save
 process.train_save(path="diffusion_checkpoint.pt",X=X_train)
-# Alternately, as with GANs can use process.train() and process.save() separately
 
+
+# Alternately, as with GANs can use process.train() and process.save() separately
 # Generate samples
 X_fake = process.generate_samples(NUM_SAMPLES)
 
 process_loaded = DiffusionProcess.load_process("diffusion_checkpoint.pt")
+
+# As with GANs we can use a conditional
+# one hot encode the labels
+one_hot = torch.nn.functional.one_hot(torch.tensor(labels), num_classes=3).float()
+# assign each sample its cluster center
+centers_per_sample = torch.tensor(centers)[labels]
+# combine the centers with encoded labels
+c = torch.cat([centers_per_sample, one_hot], dim=1).float()
+# get the number of conditional dimensions
+conditional_dim = c.shape[1]
+# create the process
+model = DiffusionNet(data_dim=2, conditional_dim=conditional_dim, num_hidden_layers=4,  hidden_dims=(256,256))
+process_cond = DiffusionProcess(
+  model=model,
+  betas=linear_beta_schedule(NUM_TIMESTEPS),
+  num_timesteps=NUM_TIMESTEPS,
+  data_dim=2
+)
+
+# train the model
+process_cond.train(
+  X=X_train,
+  c=c
+)
+
+# generate samples
+X_fake_cond = process_cond.generate_samples(num_samples=NUM_SAMPLES, c=c[:NUM_SAMPLES])
 ```
 ## Advanced Usage
 
