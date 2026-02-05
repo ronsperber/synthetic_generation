@@ -11,10 +11,8 @@ def test_dimension_mismatch_output_feature():
         train_gan(X=X, G=G, D=D, epochs=1, batch_size=16)
 
 def test_dimension_mismatch_conditional():
-    G = Generator(noise_dim=20, num_hidden_layers=2, out_dim=10, hidden_dims=(32, 32),
-                  use_conditional=True, conditional_dim=3)
-    D = Discriminator(feature_dim=10, num_hidden_layers=2, hidden_dims=(32, 32),
-                      use_conditional=True, conditional_dim=5)
+    G = Generator(noise_dim=20, num_hidden_layers=2, out_dim=10, hidden_dims=(32, 32), conditional_dim=3)
+    D = Discriminator(feature_dim=10, num_hidden_layers=2, hidden_dims=(32, 32),conditional_dim=5)
     X = torch.randn(32, 10)
     c = torch.nn.functional.one_hot(torch.randint(0, 3, (32,)), num_classes=3).float()
     with pytest.raises(ValueError, match="Conditional"):

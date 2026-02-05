@@ -26,10 +26,8 @@ def models():
 @pytest.fixture
 def conditional_models():
     torch.manual_seed(42)
-    G = Generator(noise_dim=20, num_hidden_layers=2, out_dim=10, hidden_dims=(32, 32),
-                  use_conditional=True, conditional_dim=3)
-    D = Discriminator(feature_dim=10, num_hidden_layers=2, hidden_dims=(32, 32),
-                      use_conditional=True, conditional_dim=3)
+    G = Generator(noise_dim=20, num_hidden_layers=2, out_dim=10, hidden_dims=(32, 32), conditional_dim=3)
+    D = Discriminator(feature_dim=10, num_hidden_layers=2, hidden_dims=(32, 32), conditional_dim=3)
     return G, D
 
 @pytest.fixture

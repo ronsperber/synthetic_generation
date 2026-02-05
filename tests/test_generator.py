@@ -37,7 +37,6 @@ def test_generator_multiple_heads_with_conditional():
         num_hidden_layers=2,
         hidden_dims=[(6, 8), (8, 8)],
         output_heads=heads,
-        use_conditional=True,
         conditional_dim=2,
     )
     z = torch.randn(5, 4)

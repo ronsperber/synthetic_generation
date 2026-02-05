@@ -36,7 +36,6 @@ class Generator(nn.Module):
         out_dim: int | None = None,
         output_heads: List[OutputHead] | None = None,  # list[OutputHead]
         hidden_activation: ActivationFactory = nn.LeakyReLU,
-        use_conditional: bool = False,
         conditional_dim: int = 0,
     ):
         """
@@ -56,10 +55,8 @@ class Generator(nn.Module):
             or a sequence of such tuples specifying each layer explicitly
         hidden_activation : ActivationFactory
             class used for activation after each layer other than the output layer
-        use_conditional : bool
-            Boolean of whether or not an additional conditional is being used
         conditional_dim : int
-            when use_conditional is True, represents the dimension of the conditional
+            represents the dimension of the conditional, 0 indicates no conditional
         """
         super().__init__()
         # save initialization parameters for recreating model
@@ -70,7 +67,6 @@ class Generator(nn.Module):
             "hidden_dims": hidden_dims,
             "hidden_activation": hidden_activation,
             "output_heads": output_heads,
-            "use_conditional": use_conditional,
             "conditional_dim": conditional_dim
         }
         if output_heads is None:
@@ -104,7 +100,7 @@ class Generator(nn.Module):
             self.activation = hidden_activation()
         else:
             self.activation = hidden_activation
-        self.conditional_dim = conditional_dim if use_conditional else 0
+        self.conditional_dim = conditional_dim
         self.output_heads = output_heads
         self.input_layer = nn.Linear(
             self.noise_dim + self.conditional_dim, hidden_dims[0][0]
@@ -141,6 +137,8 @@ class Generator(nn.Module):
         c : torch.Tensor
             optional conditional tensor if there is a conditional
         """
+        if self.conditional_dim > 0 and c is None:
+            raise ValueError(f"Conditional dimension is {self.conditional_dim} and no conditional was passed.")
         if c is not None:
             x = torch.cat([z, c], dim=1)
         else:
@@ -228,7 +226,6 @@ class Discriminator(nn.Module):
         num_hidden_layers: int,
         hidden_dims: HiddenDims,
         hidden_activation: ActivationFactory = nn.LeakyReLU,
-        use_conditional: bool = False,
         use_sigmoid: bool = False,
         conditional_dim: int = 0,
     ):
@@ -245,13 +242,11 @@ class Discriminator(nn.Module):
                 or a sequence of such tuples specifying each layer explicitly
         hidden_activation : ActivationFactory
             activation function to be used on all layers other than output layer
-        use_conditional : bool
-            Boolean on whether or not a conditional is being used
         use_sigmoid : bool
             whether or not a final sigmoid activation is to be applied. This should
             always be False for a WGAN
-        condtional_dim : int
-            when use_conditional is True, the dimension of the conditional
+        conditional_dim : int
+           dimension of conditional, 0 indicates no conditional used
         """
         super().__init__()
         # save initialization parameters for recreating model
@@ -260,7 +255,6 @@ class Discriminator(nn.Module):
             "num_hidden_layers": num_hidden_layers,
             "hidden_dims": hidden_dims,
             "hidden_activation": hidden_activation,
-            "use_conditional": use_conditional,
             "use_sigmoid": use_sigmoid,
             "conditional_dim": conditional_dim
         }
@@ -285,7 +279,7 @@ class Discriminator(nn.Module):
             self.activation = hidden_activation
         else:
             self.activation = hidden_activation()  
-        self.conditional_dim = conditional_dim if use_conditional else 0
+        self.conditional_dim = conditional_dim 
 
         self.input_layer = nn.Linear(
             self.feature_dim + self.conditional_dim, hidden_dims[0][0]
@@ -306,7 +300,7 @@ class Discriminator(nn.Module):
         x : torch.Tensor
             data that will be evaluated by the Discriminator/Critic
         c : optional torch.Tensor
-            When a condtional is being used, the conditional to be evaluated
+            When a conditional is being used, the conditional to be evaluated
         return_features : bool
             whether or not to return the output of the last hidden layer as well as final output
         Returns
@@ -318,6 +312,8 @@ class Discriminator(nn.Module):
         Optional torch.Tensor
             when return_features is True, the output of the last hidden layer
         """
+        if self.conditional_dim > 0 and c is None:
+            raise ValueError(f"Conditional dimension is {self.conditional_dim}, but no conditional was passed")
         if c is not None:
             x = torch.cat([x, c], dim=1)
         x = self.activation(self.input_layer(x))

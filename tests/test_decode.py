@@ -11,8 +11,7 @@ def test_decode_forward():
         num_hidden_layers=1,
         hidden_dims=(4,4),
         output_heads=[head],
-        hidden_activation=nn.ReLU(),
-        use_conditional=False
+        hidden_activation=nn.ReLU()
     )
 
     # Fixed input
@@ -46,8 +45,7 @@ def test_decode_callable_vs_module():
             num_hidden_layers=1,
             hidden_dims=(4,4),
             output_heads=[head],
-            hidden_activation=nn.ReLU(),
-            use_conditional=False
+            hidden_activation=nn.ReLU()
         )
         z = torch.randn(3,2)
         G.eval()
@@ -62,8 +60,7 @@ def test_no_decode_is_identity():
         num_hidden_layers=1,
         hidden_dims=(4,4),
         output_heads=[head],
-        hidden_activation=nn.ReLU(),
-        use_conditional=False
+        hidden_activation=nn.ReLU()
     )
     z = torch.randn(3,2)
     G.eval()
@@ -87,8 +84,7 @@ def test_multihead_decode():
         num_hidden_layers=2,
         hidden_dims=[(8,8), (8,8)],
         output_heads=heads,
-        hidden_activation=nn.ReLU(),
-        use_conditional=False
+        hidden_activation=nn.ReLU()
     )
 
     z = torch.randn(4,5)
