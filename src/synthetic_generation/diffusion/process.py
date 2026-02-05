@@ -12,8 +12,23 @@ from synthetic_generation.data_utils import make_dataloader
 
 class DiffusionProcess:
     """
-    class to store Diffusion model, train model, and generate a sample
+    Class to hold Diffusion Model along with methods to
+    train, generate sample data, save model, and load a model from a checkpoint
+    
+    DiffusionProcess expects `model` to have the following attributes:
+
+    - data_dim : int
+    - conditional_dim : int
+    - time_embedding : nn.Module or None, optionally with `init_args` dict
+    - conditional_embedding : nn.Module or None, optionally with `init_args` dict 
+    -  num_hidden_layers : int
+    - hidden_dims : tuple[int, ...]
+    - activation : nn.Module
+
+    Custom models must implement these attributes to be compatible with
+    `save_diffusion_checkpoint` and `load_diffusion_checkpoint`.
     """
+
     def __init__(
             self,
             model : nn.Module,

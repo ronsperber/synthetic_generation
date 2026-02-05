@@ -115,8 +115,9 @@ class GANProcess(BaseGanProcess):
         **train_args
             additional arguments to use in training
         """
-        self.train(X=X, c=c, **train_args)
+        history = self.train(X=X, c=c, **train_args)
         self.save(path=save_path, training_configs=self.train_configs)
+        return history
 
 class WGANProcess(BaseGanProcess):
     """
@@ -136,6 +137,7 @@ class WGANProcess(BaseGanProcess):
             additional arguments for training
         """
         self.train_configs = train_wgan_gp( G=self.G, D=self.D, X=X, c=c, return_configs=True, **train_args)
+
     def train_save(self, save_path: str, X: torch.Tensor,c: torch.Tensor | None = None, **train_args):
         """
         training the Generator and Discriminator on a dataset
@@ -151,5 +153,6 @@ class WGANProcess(BaseGanProcess):
         **train_args:
             additional arguments for training
         """
-        self.train(X=X, c=c, **train_args)
+        history = self.train(X=X, c=c, **train_args)
         self.save(path=save_path, training_configs=self.train_configs)
+        return history

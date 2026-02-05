@@ -222,7 +222,7 @@ def train_wgan_gp(
     X : torch.Tensor | DataLoader
         data to train the networks on
     c : Optional torch.Tensor
-        when there is a condtional, this represents the conditional for the training data
+        when there is a conditional, this represents the conditional for the training data
     lr_G : float
         the learning rate for G
     lr_D : float

@@ -208,7 +208,15 @@ X_fake = scaler.inverse_transform(X_fake_scaled.detach().cpu().numpy())
   - Primarily designed for tabular or low-dimensional data
 
   - Intended for experimentation and demonstration; production use requires additional validation, monitoring, and constraints
+### Extending DiffusionProcess with a Custom Model
 
+To use a custom model with `DiffusionProcess`, your class should:
+
+- Accept `data_dim`, `conditional_dim`, `conditional_embedding`, `time_embedding`, `num_hidden_layers`, `hidden_dims`, `activation` in its constructor.
+- Have the same-named attributes for checkpointing.
+- Optional: include `init_args` in `time_embedding` or `conditional_embedding` to enable automatic reconstruction on load.
+
+This ensures `.save()` and `.load_process()` work correctly.
 ## Extensibility
 
 The framework is designed to be modular, making it straightforward to add new generative models (e.g., VAEs) while keeping the same unified Process API for training, sampling, and checkpointing
