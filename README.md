@@ -299,4 +299,4 @@ To use a custom model with `DiffusionProcess`, your class should:
 This ensures `.save()` and `.load_process()` work correctly.
 ## Extensibility
 
-The framework is designed to be modular, making it straightforward to add new generative models (e.g., VAEs) while keeping the same unified Process API for training, sampling, and checkpointing
+The framework is designed to be modular, making it straightforward to add new generative models while keeping the same unified Process API for training, sampling, and checkpointing
