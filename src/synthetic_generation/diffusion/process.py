@@ -10,6 +10,25 @@ from .schedules import linear_beta_schedule
 from .model_saving import save_diffusion_checkpoint, load_diffusion_checkpoint
 from synthetic_generation.data_utils import make_dataloader
 
+def make_null_conditional(c_batch: torch.Tensor, null_token: torch.Tensor | None = None):
+    """
+    Create a 'null' conditional embedding for classifier-free guidance.
+    
+    Parameters
+    ----------
+    c_batch : torch.Tensor
+        The batch of conditional tensors (batch_size, conditional_dim)
+    null_token : torch.Tensor | None
+        If None, use zeros_like(c_batch)
+        If a tensor, expand it along batch dimension
+    """
+    batch_size = c_batch.shape[0]
+    if null_token is None:
+        return torch.zeros_like(c_batch)
+    else:
+        # expand to batch size
+        return null_token.unsqueeze(0).expand(batch_size, -1)
+
 class DiffusionProcess:
     """
     Class to hold Diffusion Model along with methods to
@@ -52,6 +71,7 @@ class DiffusionProcess:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model.to(self.device)
         self.train_config = None # set in case we try to save the model before training
+        self.null_token = None # set for CFG 
         # if the model has a data_dim we use that and ignore data_dim passed (if any)
         if hasattr(model, "data_dim"):
             self.data_dim = model.data_dim
@@ -88,7 +108,9 @@ class DiffusionProcess:
             epochs: int = 100,
             batch_size: int = 512,
             lr: float = 1e-4,
+            null_token : torch.Tensor | None = None,
             return_history: bool = False
+
     ):
         """
         method to train self.model on dataset X
@@ -105,6 +127,8 @@ class DiffusionProcess:
             if DataLoader is passed, this is ignored
         lr: float
             learning rate to use while training
+        null_token: torch.Tensor | None
+            optional null conditional tensor to use for classifier free guidance
         return_history: bool
             whether or not to return the loss history
         Returns
@@ -115,8 +139,10 @@ class DiffusionProcess:
         self.train_config = {
             "epochs": epochs,
             "batch_size": batch_size,
-            "lr" : lr
+            "lr" : lr,
+            "null_condtional": null_token
         }
+        self.null_token = null_token
         if epochs <= 0:
             raise ValueError("Number of epochs must be positive")
         if isinstance(X, torch.Tensor):
@@ -313,43 +339,7 @@ class DiffusionProcess:
         history = self.train(X=X, c=c, **kwargs) 
         self.save(path=path)
         return history
-    def save(
-            self,
-            path: str,
-    ):
-        """
-        method to save process
-        Parameters
-        ----------
-            path : str
-                location to save the process
-        """
-        save_diffusion_checkpoint(process=self, path=path, train_config=self.train_config)
-
-    def train_save(
-            self,
-            path: str,
-            X: torch.Tensor | DataLoader,
-            c: torch.Tensor | None = None,
-            **kwargs
-    ):
-        """
-        method to train the model on data and save to a checkpoint
-        Parameters
-        path : str
-            path to save checkpoint
-        X : torch.Tensor | DataLoader
-            data to train on
-        c : torch.Tensor | None
-            conditional tensor when not None
-        **kwargs:
-            additional arguments to use in train
-        """
-
-        history = self.train(X=X, c=c, **kwargs) 
-        self.save(path=path)
-        return history
-        
+    
     @classmethod
     def load_process(
         cls,
