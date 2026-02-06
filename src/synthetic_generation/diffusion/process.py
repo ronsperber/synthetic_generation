@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from .sampling import p_sample, q_sample, ddim_sample
+from .sampling import p_sample, q_sample, ddim_sample, p_sample_cfg, ddim_sample_cfg
 from .schedules import linear_beta_schedule
 from .model_saving import save_diffusion_checkpoint, load_diffusion_checkpoint
 from synthetic_generation.data_utils import make_dataloader
@@ -108,6 +108,7 @@ class DiffusionProcess:
             epochs: int = 100,
             batch_size: int = 512,
             lr: float = 1e-4,
+            p_null: float = 0.0,
             null_token : torch.Tensor | None = None,
             return_history: bool = False
 
@@ -127,6 +128,8 @@ class DiffusionProcess:
             if DataLoader is passed, this is ignored
         lr: float
             learning rate to use while training
+        p_null : float
+            probability of using null token for classifier free guidance
         null_token: torch.Tensor | None
             optional null conditional tensor to use for classifier free guidance
         return_history: bool
@@ -140,7 +143,8 @@ class DiffusionProcess:
             "epochs": epochs,
             "batch_size": batch_size,
             "lr" : lr,
-            "null_condtional": null_token
+            "p_null": p_null,
+            "null_conditional": null_token
         }
         self.null_token = null_token
         if epochs <= 0:
@@ -176,6 +180,11 @@ class DiffusionProcess:
                     sqrt_one_minus_alphas_cumprod=self.sqrt_one_minus_alphas_cumprod,
                     t=t
                 )
+                # when a conditional exists we check for CFG
+                if p_null > 0 and c_batch is not None: 
+                    c_uncond = make_null_conditional(c_batch=c_batch, null_token=self.null_token)
+                    mask = (torch.rand(c_batch.shape[0], device=c_batch.device) < p_null).float()
+                    c_batch = mask[:, None] * c_uncond + (1 - mask[:, None]) * c_batch
                 noise_pred = self.model(x_t, t, c_batch)
                 loss = F.mse_loss(noise_pred, noise)
                 opt.zero_grad()
@@ -193,7 +202,8 @@ class DiffusionProcess:
     def generate_samples(
             self,
             num_samples : int,
-            c : torch.Tensor | None = None
+            c : torch.Tensor | None = None,
+            guidance_scale : float = 1.0
     ) -> torch.Tensor:
         """
         method to use on trained model to generate new samples
@@ -203,6 +213,8 @@ class DiffusionProcess:
             number of samples to generate
         c: torch.Tensor | None
             optional conditional tensor
+        guidance_scale : float
+            for CFG scale to use in generating
         Returns
         -------
         x_t : torch.Tensor
@@ -215,22 +227,38 @@ class DiffusionProcess:
                     )
         # generate noise
         x_t= torch.randn(num_samples, self.data_dim, device=self.device)
+        if c is not None and guidance_scale != 1.0:
+            c_null=make_null_conditional(c_batch=c, null_token=self.null_token)
         # go backwards one timestep at a time to denoise
         for t in tqdm(
             reversed(range(self.num_timesteps)),
             desc="Sampling",
             total=self.num_timesteps
             ):
-            x_t = p_sample(
-                model=self.model,
-                x_t = x_t,
-                t=t,
-                betas=self.betas,
-                alphas=self.alphas,
-                alphas_cumprod=self.alphas_cumprod,
-                alphas_cumprod_prev=self.alphas_cumprod_prev,
-                c=c
-            )
+            if c is None or guidance_scale == 1.0:
+                x_t = p_sample(
+                    model=self.model,
+                    x_t = x_t,
+                    t=t,
+                    betas=self.betas,
+                    alphas=self.alphas,
+                    alphas_cumprod=self.alphas_cumprod,
+                    alphas_cumprod_prev=self.alphas_cumprod_prev,
+                    c=c
+                )
+            else:
+                x_t = p_sample_cfg(
+                    model=self.model,
+                    x_t = x_t,
+                    t=t,
+                    betas=self.betas,
+                    alphas=self.alphas,
+                    alphas_cumprod=self.alphas_cumprod,
+                    alphas_cumprod_prev=self.alphas_cumprod_prev,
+                    c=c,
+                    c_null=c_null,
+                    guidance_scale=guidance_scale
+                )
         
         return x_t.cpu()
  
@@ -241,7 +269,8 @@ class DiffusionProcess:
         num_samples: int,
         num_inference_steps: int = 50,
         eta: float = 0.0,
-        c: torch.Tensor | None = None
+        c: torch.Tensor | None = None,
+        guidance_scale: float = 1.0
     ) -> torch.Tensor:
         """
         Generate samples using DDIM sampling (faster than DDPM)
@@ -263,6 +292,8 @@ class DiffusionProcess:
             - eta=1.0: Stochastic (similar to DDPM)
         c : torch.Tensor, optional
             Conditioning information
+        guidance_scale : float
+            guidance_scale to be used for CFG
     
         Returns
         -------
@@ -279,7 +310,8 @@ class DiffusionProcess:
         # E.g., if num_timesteps=1000 and num_inference_steps=50,
         # we get [0, 20, 40, 60, ..., 980, 1000]
         timesteps = np.linspace(0, self.num_timesteps - 1, num_inference_steps, dtype=int)
-    
+        if c is not None and guidance_scale != 1.0:
+            c_null=make_null_conditional(c_batch=c, null_token=self.null_token)
         # Start from pure noise
         x = torch.randn(num_samples, self.data_dim, device=self.device)
     
@@ -290,16 +322,28 @@ class DiffusionProcess:
         ):
             t = timesteps[i]
             t_prev = timesteps[i - 1] if i > 0 else -1
-        
-            x = ddim_sample(
-                model=self.model,
-                x_t=x,
-                t=t,
-                t_prev=t_prev,
-                alphas_cumprod=self.alphas_cumprod,
-                eta=eta,
-                c=c
-            )
+            if c is None or guidance_scale == 1.0:
+                x = ddim_sample(
+                    model=self.model,
+                    x_t=x,
+                    t=t,
+                    t_prev=t_prev,
+                    alphas_cumprod=self.alphas_cumprod,
+                    eta=eta,
+                    c=c
+                )
+            else:
+                x = ddim_sample_cfg(
+                    model=self.model,
+                    x_t=x,
+                    t=t,
+                    t_prev=t_prev,
+                    alphas_cumprod=self.alphas_cumprod,
+                    eta=eta,
+                    c=c,
+                    c_null=c_null,
+                    guidance_scale=guidance_scale
+                )
     
         return x.cpu()
     

@@ -6,7 +6,7 @@ def q_sample(
         sqrt_alphas_cumprod: torch.Tensor,
         sqrt_one_minus_alphas_cumprod: torch.Tensor,
         noise: torch.Tensor | None = None
-        ) -> tuple[torch.Tensor,torch.Tensor]
+        ) -> tuple[torch.Tensor,torch.Tensor]:
     """
     Sample x_t from x_0 at timestep t
     Parameters
