@@ -56,7 +56,7 @@ Wrapper classes for simplified workflows:
 Beta schedules: `linear_beta_schedule`, `cosine_beta_schedule`
 
 - `src/synthetic_generation/diffusion/sampling.py`
-Sampling functions: `q_sample`, `p_sample`, `ddim_sample`
+Sampling functions: `q_sample`, `p_sample`, `ddim_sample`, `p_sample_cfg`, `ddim_sample_cfg`
 
 - `src/synthetic_generation/diffusion/model_saving.py`
 Functions to save/load a DiffusionProcess:
@@ -283,7 +283,7 @@ X_fake = scaler.inverse_transform(X_fake_scaled.detach().cpu().numpy())
 
   - Fully connected networks only (no convolutions)
 
-  - Conditional information is incorporated via feature concatenation
+  - Conditional information is incorporated via feature concatenation (and/or embedded feature concatenation in diffusion)
 
   - Primarily designed for tabular or low-dimensional data
 
