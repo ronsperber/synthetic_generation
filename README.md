@@ -8,7 +8,7 @@ GANs (vanilla, conditional)
 
 WGAN-GP (standard and conditional)
 
-Diffusion models (standard and conditional)
+Diffusion models (standard and conditional, including Classifer Free Guidance (CFG))
 
 A key design feature is the Process API, which provides a unified interface for training, generating samples, and saving/loading models.
 
