@@ -12,6 +12,25 @@ Diffusion models (standard and conditional, including Classifer Free Guidance (C
 
 A key design feature is the Process API, which provides a unified interface for training, generating samples, and saving/loading models.
 
+## Key Findings
+
+We systematically compared 5 generative methods on a ring of Gaussian clusters:
+
+**Top 3 methods achieved near-perfect generation quality:**
+
+| Method | kNN Accuracy* | MMD | Training Time |
+|--------|---------------|-----|---------------|
+| Conditional Diffusion | 51.4% ± 0.9% | 0.00130 ± 0.00009 | 4:12 |
+| GAN + FM + Entropy | 52.2% ± 0.6% | 0.00134 ± 0.00010 | 9:56 |
+| Vanilla Diffusion | 52.3% ± 0.8% | 0.00168 ± 0.00012 | 4:28 |
+
+**kNN accuracy** ~51-52% (barely above random chance of 50%) indicates synthetic data is nearly indistinguishable from real data.
+
+**Key insight:** Feature matching + entropy regularization are essential for GAN quality. Without them, performance degrades significantly.
+
+**For detailed analysis of Classifier-Free Guidance and geometric embeddings:** [Blog post](https://ronsperber.substack.com/publish/post/187241736)
+
+
 ## Repository Structure
 ### GANs
 
