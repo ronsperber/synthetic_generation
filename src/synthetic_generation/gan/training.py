@@ -2,7 +2,7 @@
 module with functions to train a GAN and a WGAN-GP
 """
 
-from typing import Literal
+from typing import Literal, Callable
 import torch
 import torch.nn as nn
 import numpy as np
@@ -27,7 +27,9 @@ def train_gan(
     batch_size: int = 64,
     epochs: int = 200,
     return_history: bool = False,
-    return_configs: bool = False
+    return_configs: bool = False,
+    epoch_callback: Callable[[dict], bool] | None = None,
+    callback_every: int = 1,
 ):
     """
     Function to train a GAN
@@ -64,6 +66,13 @@ def train_gan(
         whether or not to return the history of losses
     return_configs: boolean
         whether or not to return the training configs
+    epoch_callback : Callable[[dict], bool] | None
+        optional callback called every callback_every epochs.
+        receives a state dict with keys: epoch, g_loss, d_loss, G, D,
+        g_loss_history, d_loss_history.
+        return True to stop training early, False to continue.
+    callback_every : int
+        how often to call epoch_callback (default 1 = every epoch)
     """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     G.to(device)
@@ -80,7 +89,8 @@ def train_gan(
         "batch_size": batch_size,
         "epochs": epochs
     }
-    if return_history:
+    track_history = return_history or (epoch_callback is not None)
+    if track_history:
         G_losses = []
         D_losses = []
     if loss == "bce":
@@ -108,6 +118,7 @@ def train_gan(
     # set the optimizers
     opt_g = torch.optim.Adam(G.parameters(), lr=lr_G, betas=(0.5, 0.999))
     opt_d = torch.optim.Adam(D.parameters(), lr=lr_D, betas=(0.5, 0.999))
+    
     pbar = tqdm(range(1, epochs+1), desc = "GAN training")
     for epoch in pbar:
         epoch_d_losses = []
@@ -178,9 +189,23 @@ def train_gan(
             # Unfreeze D parameters
             for param in D.parameters():
                param.requires_grad = True    
-        if return_history:
+        
+        if track_history:
             D_losses.append((epoch, np.mean(epoch_d_losses)))
             G_losses.append((epoch, np.mean(epoch_g_losses)))
+        if epoch_callback is not None and epoch % callback_every == 0:
+            callback_state = {
+                "epoch": epoch,
+                "G": G,
+                "D": D,
+                "g_loss": np.mean(epoch_g_losses),
+                "d_loss": np.mean(epoch_d_losses),
+                "G_history": G_losses if track_history else None,
+                "D_history": D_losses if track_history else None,
+            }
+            should_stop = epoch_callback(callback_state)
+            if should_stop:
+                break
         pbar.set_postfix(
             {"D": f"{np.mean(epoch_d_losses):.4f}", "G": f"{np.mean(epoch_g_losses):.4f}"}
 
@@ -210,7 +235,9 @@ def train_wgan_gp(
     n_critic: int = 5,
     lambda_gp: float = 10.0,
     return_history : bool = False,
-    return_configs: bool = False
+    return_configs: bool = False,
+    epoch_callback: Callable[[dict], bool] | None = None,
+    callback_every: int = 1,
 ):
     """
     Function to train a WGAN-GP
@@ -246,7 +273,13 @@ def train_wgan_gp(
         whether or not to return the history of losses over training
     return_configs : bool
         whether or not to return the training_configs
-    
+    epoch_callback : Callable[[dict], bool] | None
+        optional callback called every callback_every epochs.
+        receives a state dict with keys: epoch, g_loss, d_loss, G, D,
+        g_loss_history, d_loss_history.
+        return True to stop training early, False to continue.
+    callback_every : int
+        how often to call epoch_callback (default 1 = every epoch)
     """
     device = "cuda" if torch.cuda.is_available() else "cpu"
     G.to(device)
@@ -264,7 +297,8 @@ def train_wgan_gp(
         "n_critic": n_critic,
         "lambda_gp": lambda_gp
     }
-    if return_history:
+    track_history = return_history or (epoch_callback is not None)
+    if track_history:
         G_losses = []
         D_losses = []
     # if the data is not already in a DataLoader, put it in one
@@ -349,9 +383,22 @@ def train_wgan_gp(
             # Unfreeze D parameters
             for param in D.parameters():
                param.requires_grad = True
-        if return_history:
+        if track_history:
             D_losses.append((epoch, np.mean(epoch_d_losses)))
             G_losses.append((epoch, np.mean(epoch_g_losses)))
+        if epoch_callback is not None and epoch % callback_every == 0:
+            callback_state = {
+                "epoch": epoch,
+                "G": G,
+                "D": D,
+                "g_loss": np.mean(epoch_g_losses),
+                "d_loss": np.mean(epoch_d_losses),
+                "G_history": G_losses if track_history else None,
+                "D_history": D_losses if track_history else None,
+            }
+            should_stop = epoch_callback(callback_state)
+            if should_stop:
+                break
         pbar.set_postfix(
             {"D": f"{np.mean(epoch_d_losses):.4f}", "G": f"{np.mean(epoch_g_losses):.4f}"}
         )

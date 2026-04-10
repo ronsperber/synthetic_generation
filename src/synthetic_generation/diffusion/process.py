@@ -1,4 +1,5 @@
 import warnings
+from typing import Callable
 from tqdm.auto import tqdm
 import numpy as np
 from torch.utils.data import DataLoader
@@ -110,7 +111,10 @@ class DiffusionProcess:
             lr: float = 1e-4,
             p_null: float = 0.0,
             null_token : torch.Tensor | None = None,
-            return_history: bool = False
+            return_history: bool = False,
+            epoch_callback: Callable[[dict], bool] | None = None,
+            callback_every: int = 1,
+
 
     ):
         """
@@ -134,6 +138,12 @@ class DiffusionProcess:
             optional null conditional tensor to use for classifier free guidance
         return_history: bool
             whether or not to return the loss history
+        epoch_callback : Callable[[dict], bool] | None
+            optional callback called every callback_every epochs.
+            receives a state dict with keys: epoch, loss, model, history
+            return True to stop training early, False to continue.
+        callback_every : int
+            how often to call epoch_callback (default 1 = every epoch)
         Returns
         -------
             (Optional) epoch_losses : list
@@ -193,6 +203,16 @@ class DiffusionProcess:
                 epoch_loss += loss.item() * X_batch.size(0)
             epoch_loss /= len(dataloader.dataset)
             epoch_losses.append((epoch,epoch_loss))
+            if epoch_callback is not None and epoch % callback_every == 0:
+                callback_state = {
+                    "epoch": epoch,
+                    "model": self.model,
+                    "loss": epoch_loss,
+                    "history": epoch_losses,
+                }
+                should_stop = epoch_callback(callback_state)
+                if should_stop:
+                    break
             pbar.set_postfix({"Loss" : f"{epoch_loss:.4f}"})
         pbar.close()
         if return_history:

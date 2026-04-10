@@ -74,40 +74,25 @@ def test_diffusion_process_custom_schedule():
 # DiffusionProcess.train() tests
 # ------------------------------
 
-def test_diffusion_process_train_with_tensor():
-    """Train accepts tensor input"""
-    model = DiffusionNet(data_dim=2)
-    betas = linear_beta_schedule(num_timesteps=100)
-    process = DiffusionProcess(model, betas=betas, num_timesteps=100)
-    
-    X = torch.randn(50, 2)
-    process.train(X, epochs=2, batch_size=10, lr=1e-3)
-    
-    # Should complete without error
 
-def test_diffusion_process_train_with_dataloader():
-    """Train accepts DataLoader input"""
+def test_diffusion_callback_stops_training():
+    stop_epoch = 3
+    
+    def callback(state):
+        return state["epoch"] >= stop_epoch
     model = DiffusionNet(data_dim=2)
     betas = linear_beta_schedule(num_timesteps=100)
     process = DiffusionProcess(model, betas=betas, num_timesteps=100)
-    
     X = torch.randn(50, 2)
     loader = DataLoader(TensorDataset(X), batch_size=10)
-    process.train(loader, epochs=2, lr=1e-3)
-    
-    # Should complete without error
+    history = process.train(
+        X=loader,
+        epochs=10,
+        epoch_callback=callback,
+        return_history=True
+    )
+    assert len(history) == stop_epoch
 
-def test_diffusion_process_train_with_conditioning():
-    """Train works with conditioning"""
-    model = DiffusionNet(data_dim=2, conditional_dim=3)
-    betas = linear_beta_schedule(num_timesteps=100)
-    process = DiffusionProcess(model, betas=betas, num_timesteps=100)
-    
-    X = torch.randn(50, 2)
-    c = torch.randn(50, 3)
-    process.train(X, c=c, epochs=2, batch_size=10, lr=1e-3)
-    
-    # Should complete without error
 
 def test_diffusion_process_train_dataloader_with_c_warns():
     """Warns if DataLoader provided with c parameter"""

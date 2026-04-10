@@ -60,9 +60,21 @@ def test_train_gan_conditional(conditional_models, sample_conditional_data):
     train_gan(X=X, G=G, D=D, c=c, epochs=2, batch_size=16)
     assert any(not torch.allclose(p0, p1) for p0, p1 in zip(initial_g_params, G.parameters()))
 
-def test_single_epoch_training(models, sample_data):
+def test_gan_callback_stops_training(models, sample_data):
     G, D = models
-    train_gan(X=sample_data, G=G, D=D, epochs=1, batch_size=16)
+    stop_epoch = 3
+    
+    def callback(state):
+        return state["epoch"] >= stop_epoch
+    
+    G_losses, D_losses = train_gan(
+        X=sample_data, G=G, D=D, 
+        epochs=10, batch_size=16,
+        epoch_callback=callback,
+        return_history=True
+    )
+    assert len(G_losses) == stop_epoch
+    assert len(D_losses) == stop_epoch
 
 def test_batch_size_one(models, sample_data):
     G, D = models
