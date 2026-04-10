@@ -17,7 +17,7 @@ def test_diffusion_process_init_with_model_data_dim():
     betas = linear_beta_schedule(num_timesteps=100)
     process = DiffusionProcess(model, betas=betas, num_timesteps=100)
     
-    assert process.data_dim == 5
+    assert process.data_dim == (5,)
     assert process.num_timesteps == 100
 
 def test_diffusion_process_init_with_explicit_data_dim():
@@ -26,7 +26,7 @@ def test_diffusion_process_init_with_explicit_data_dim():
     betas = linear_beta_schedule(num_timesteps=100)
     process = DiffusionProcess(model, betas=betas, num_timesteps=100, data_dim=10)
     
-    assert process.data_dim == 10
+    assert process.data_dim == (10,)
 
 def test_diffusion_process_init_missing_data_dim():
     """Raises if model has no data_dim and none provided"""

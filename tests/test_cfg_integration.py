@@ -37,11 +37,20 @@ def conditional_tensor():
     return torch.randn(3, 2)  # batch_size=3, cond_dim=2
 
 # --- Tests ---
+def test_data_dim_int_normalized_to_tuple():
+    model = DummyDiffusionModel()
+    process = DiffusionProcess(model=model, data_dim=4, num_timesteps=6)
+    assert process.data_dim == (4,)
+
+def test_data_dim_tuple_unchanged():
+    model = DummyDiffusionModel()
+    process = DiffusionProcess(model=model, data_dim=(4,), num_timesteps=6)
+    assert process.data_dim == (4,)
 
 def test_generate_samples_unconditional(diffusion_process):
     num_samples = 3
     samples = diffusion_process.generate_samples(num_samples=num_samples)
-    assert samples.shape == (num_samples, diffusion_process.data_dim)
+    assert samples.shape == (num_samples, *diffusion_process.data_dim)
     # outputs should be finite numbers
     assert torch.isfinite(samples).all()
 
@@ -54,7 +63,7 @@ def test_generate_samples_conditional(diffusion_process, conditional_tensor):
         guidance_scale=1.0
     )
     assert samples.shape[0] == num_samples
-    assert samples.shape[1] == diffusion_process.data_dim
+    assert samples.shape[1:] == diffusion_process.data_dim
     assert torch.isfinite(samples).all()
 
 def test_generate_samples_cfg(diffusion_process, conditional_tensor):
@@ -64,7 +73,7 @@ def test_generate_samples_cfg(diffusion_process, conditional_tensor):
         c=conditional_tensor,
         guidance_scale=1.5
     )
-    assert samples.shape == (num_samples, diffusion_process.data_dim)
+    assert samples.shape == (num_samples, *diffusion_process.data_dim)
     assert torch.isfinite(samples).all()
 
 def test_generate_samples_ddim_unconditional(diffusion_process):
@@ -74,7 +83,7 @@ def test_generate_samples_ddim_unconditional(diffusion_process):
         num_inference_steps=3,
         eta=0.0
     )
-    assert samples.shape == (num_samples, diffusion_process.data_dim)
+    assert samples.shape == (num_samples, *diffusion_process.data_dim)
     assert torch.isfinite(samples).all()
 
 def test_generate_samples_ddim_cfg(diffusion_process, conditional_tensor):
@@ -86,7 +95,7 @@ def test_generate_samples_ddim_cfg(diffusion_process, conditional_tensor):
         c=conditional_tensor,
         guidance_scale=1.2
     )
-    assert samples.shape == (num_samples, diffusion_process.data_dim)
+    assert samples.shape == (num_samples, *diffusion_process.data_dim)
     assert torch.isfinite(samples).all()
 
 def test_ddim_deterministic_consistency(diffusion_process):

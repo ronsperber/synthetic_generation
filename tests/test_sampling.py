@@ -46,6 +46,21 @@ def test_q_sample_shape(diffusion_components):
     assert x_t.shape == x0.shape
     assert noise.shape == x0.shape
 
+def test_q_sample_shape_3d(diffusion_components):
+    """q_sample works with 3D input (e.g. image-like data)"""
+    x0 = torch.randn(10, 3, 4)  # batch, channels, width
+    t = torch.randint(0, diffusion_components['num_timesteps'], (10,))
+    
+    x_t, noise = q_sample(
+        x0=x0,
+        t=t,
+        sqrt_alphas_cumprod=diffusion_components['sqrt_alphas_cumprod'],
+        sqrt_one_minus_alphas_cumprod=diffusion_components['sqrt_one_minus_alphas_cumprod']
+    )
+    
+    assert x_t.shape == x0.shape
+    assert noise.shape == x0.shape
+
 def test_q_sample_with_custom_noise(diffusion_components):
     """q_sample uses provided noise"""
     x0 = torch.randn(5, 3)

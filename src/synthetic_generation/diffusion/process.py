@@ -36,7 +36,7 @@ class DiffusionProcess:
     
     DiffusionProcess expects `model` to have the following attributes:
 
-    - data_dim : int
+    - data_dim : int | tuple [int,...]
     - conditional_dim : int
     - time_embedding : nn.Module or None, optionally with `init_args` dict
     - conditional_embedding : nn.Module or None, optionally with `init_args` dict 
@@ -53,7 +53,7 @@ class DiffusionProcess:
             model : nn.Module,
             betas : torch.Tensor | None = None,
             num_timesteps: int = 1000,
-            data_dim: int | None = None
+            data_dim: int | tuple[int,...] | None = None
     ):
         """
         Parameters
@@ -64,8 +64,8 @@ class DiffusionProcess:
             number of time steps to be used
         betas: torch.Tensor (optional)
             tensor of beta values for scheduler
-        data_dim: int | None
-            dimension of the data if the model doesn't have it
+        data_dim: tuple[int,...] | None
+            dimensions of the data if the model doesn't have it
         """
         self.model = model
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -74,10 +74,10 @@ class DiffusionProcess:
         self.null_token = None # set for CFG 
         # if the model has a data_dim we use that and ignore data_dim passed (if any)
         if hasattr(model, "data_dim"):
-            self.data_dim = model.data_dim
+            self.data_dim = (model.data_dim,) if isinstance(model.data_dim,int) else model.data_dim
         else:
             if data_dim is not None:
-                self.data_dim = data_dim
+                self.data_dim = (data_dim,) if isinstance(data_dim,int) else data_dim
             else:
                 raise AttributeError(
                     f"Model {type(model).__name__} must have 'data_dim' attribute "
@@ -226,7 +226,7 @@ class DiffusionProcess:
                     "Conditional c must have length equal to the number of samples to be generated"
                     )
         # generate noise
-        x_t= torch.randn(num_samples, self.data_dim, device=self.device)
+        x_t= torch.randn(num_samples, *self.data_dim, device=self.device)
         if c is not None and guidance_scale != 1.0:
             c_null=make_null_conditional(c_batch=c, null_token=self.null_token)
         # go backwards one timestep at a time to denoise
@@ -313,7 +313,7 @@ class DiffusionProcess:
         if c is not None and guidance_scale != 1.0:
             c_null=make_null_conditional(c_batch=c, null_token=self.null_token)
         # Start from pure noise
-        x = torch.randn(num_samples, self.data_dim, device=self.device)
+        x = torch.randn(num_samples, *self.data_dim, device=self.device)
     
         # Iteratively denoise using DDIM
         for i in tqdm(reversed(range(len(timesteps))),

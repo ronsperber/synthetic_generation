@@ -29,10 +29,11 @@ def q_sample(
   
     if noise is None:
         noise = torch.randn_like(x0)
+    shape = [-1] + [1] * (x0.dim() - 1)
     return (
-        sqrt_alphas_cumprod[t][:, None] * x0 +
-        sqrt_one_minus_alphas_cumprod[t][:, None] * noise
-    ), noise
+        sqrt_alphas_cumprod[t].view(*shape) * x0 +
+        sqrt_one_minus_alphas_cumprod[t].view(*shape) * noise
+        ), noise
 
 @torch.no_grad()
 def p_sample(
