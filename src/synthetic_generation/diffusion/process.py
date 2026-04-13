@@ -88,6 +88,7 @@ class DiffusionProcess:
         if betas is None:
             betas = linear_beta_schedule(num_timesteps=num_timesteps)
         self.betas = betas
+        self.betas = self.betas.to(self.device)
         self.alphas = 1.0 - self.betas
         self.alphas_cumprod = torch.cumprod(self.alphas, dim=0)
         self.alphas_cumprod_prev = torch.cat([torch.tensor([1.0], device=self.device), self.alphas_cumprod[:-1]])
@@ -95,7 +96,7 @@ class DiffusionProcess:
         self.sqrt_one_minus_alphas_cumprod = torch.sqrt(1 - self.alphas_cumprod)
         
         # Move to device
-        self.betas = self.betas.to(self.device)
+        
         self.alphas = self.alphas.to(self.device)
         self.alphas_cumprod = self.alphas_cumprod.to(self.device)
         self.alphas_cumprod_prev = self.alphas_cumprod_prev.to(self.device)
