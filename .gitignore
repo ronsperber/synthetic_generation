@@ -183,3 +183,4 @@ Untitled*.*
 future_work.txt
 data/
 local_notebooks/
+*.db
