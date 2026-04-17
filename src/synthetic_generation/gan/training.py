@@ -8,14 +8,14 @@ import torch.nn as nn
 import numpy as np
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
-from .models import Generator, Discriminator
+from .models import Generator, Discriminator, ImageGenerator, ImageDiscriminator
 from .utils import gradient_penalty, cov_penalty, feature_entropy
 from synthetic_generation.data_utils import make_dataloader
 
 
 def train_gan(
-    G: Generator,
-    D: Discriminator,
+    G: Generator | ImageGenerator,
+    D: Discriminator | ImageDiscriminator,
     X: torch.Tensor | DataLoader,
     c: torch.Tensor | None = None,
     lr_G: float = 1e-4,
@@ -221,8 +221,8 @@ def train_gan(
 
 
 def train_wgan_gp(
-    G: Generator,
-    D: Discriminator,
+    G: Generator | ImageGenerator,
+    D: Discriminator |ImageDiscriminator,
     X: torch.Tensor | DataLoader,
     c: torch.Tensor | None = None,
     lr_G: float = 1e-4,

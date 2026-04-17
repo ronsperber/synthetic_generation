@@ -5,7 +5,7 @@ from typing import Type, Callable
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-from .models import Generator, Discriminator
+from .models import Generator, Discriminator, ImageGenerator, ImageDiscriminator
 from .training import train_gan, train_wgan_gp 
 from .model_saving import load_gan_checkpoint, save_gan_checkpoint
 
@@ -13,7 +13,7 @@ class BaseGanProcess:
     """
     Base class for GAN processes
     """
-    def __init__(self, G:Generator, D:Discriminator):
+    def __init__(self, G:Generator | ImageGenerator, D:Discriminator | ImageDiscriminator):
         """
         Create process with Generator and Discriminator/Critic
         G : Generator
