@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "synthetic-generation"
 version = "0.1.0"
 description = "Synthetic data generation utilities (GANs, diffusion, etc.)"
-dependencies = ["torch", "numpy", "tqdm"]
+dependencies = ["torch", "numpy", "tqdm", "torchvision"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

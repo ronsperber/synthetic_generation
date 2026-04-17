@@ -4,14 +4,14 @@ from synthetic_generation.gan.training import train_gan
 from synthetic_generation.gan.models import Generator, Discriminator
 
 def test_dimension_mismatch_output_feature():
-    G = Generator(noise_dim=20, num_hidden_layers=2, out_dim=10, hidden_dims=(32, 32))
+    G = Generator(noise_dim=20, num_hidden_layers=2, output_dim=10, hidden_dims=(32, 32))
     D = Discriminator(feature_dim=5, num_hidden_layers=2, hidden_dims=(32, 32))
     X = torch.randn(32, 10)
     with pytest.raises(ValueError, match="G outputs|dimension"):
         train_gan(X=X, G=G, D=D, epochs=1, batch_size=16)
 
 def test_dimension_mismatch_conditional():
-    G = Generator(noise_dim=20, num_hidden_layers=2, out_dim=10, hidden_dims=(32, 32), conditional_dim=3)
+    G = Generator(noise_dim=20, num_hidden_layers=2, output_dim=10, hidden_dims=(32, 32), conditional_dim=3)
     D = Discriminator(feature_dim=10, num_hidden_layers=2, hidden_dims=(32, 32),conditional_dim=5)
     X = torch.randn(32, 10)
     c = torch.nn.functional.one_hot(torch.randint(0, 3, (32,)), num_classes=3).float()
@@ -19,21 +19,21 @@ def test_dimension_mismatch_conditional():
         train_gan(X=X, G=G, D=D, c=c, epochs=1, batch_size=16)
 
 def test_invalid_learning_rate():
-    G = Generator(noise_dim=20, num_hidden_layers=2, out_dim=10, hidden_dims=(32, 32))
+    G = Generator(noise_dim=20, num_hidden_layers=2, output_dim=10, hidden_dims=(32, 32))
     D = Discriminator(feature_dim=10, num_hidden_layers=2, hidden_dims=(32, 32))
     X = torch.randn(32, 10)
     with pytest.raises(ValueError):
         train_gan(X=X, G=G, D=D, lr_G=-0.001, epochs=1, batch_size=16)
 
 def test_invalid_batch_size():
-    G = Generator(noise_dim=20, num_hidden_layers=2, out_dim=10, hidden_dims=(32, 32))
+    G = Generator(noise_dim=20, num_hidden_layers=2, output_dim=10, hidden_dims=(32, 32))
     D = Discriminator(feature_dim=10, num_hidden_layers=2, hidden_dims=(32, 32))
     X = torch.randn(32, 10)
     with pytest.raises((ValueError, RuntimeError)):
         train_gan(X=X, G=G, D=D, epochs=1, batch_size=0)
 
 def test_negative_epochs_raises_error():
-    G = Generator(noise_dim=20, num_hidden_layers=2, out_dim=10, hidden_dims=(32, 32))
+    G = Generator(noise_dim=20, num_hidden_layers=2, output_dim=10, hidden_dims=(32, 32))
     D = Discriminator(feature_dim=10, num_hidden_layers=2, hidden_dims=(32, 32))
     X = torch.randn(32, 10)
     with pytest.raises(ValueError):

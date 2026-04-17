@@ -99,8 +99,18 @@ class GANProcess(BaseGanProcess):
             optional conditional tensor
         **train_args:
             arguments used for training
+            do not include return_history or return_configs
         """
-        self.train_configs = train_gan(G=self.G, D=self.D, X=X, c=c, return_configs=True, **train_args)
+        self.G_losses, self.D_losses ,self.train_configs = train_gan(
+            G=self.G,
+            D=self.D,
+            X=X,
+            c=c, 
+            return_configs=True, 
+            return_history=True,
+            **train_args
+            )
+        return self.G_losses, self.D_losses
 
     def train_save(self, save_path: str, X: torch.Tensor | DataLoader,c: torch.Tensor | None = None, **train_args):
         """
@@ -114,6 +124,7 @@ class GANProcess(BaseGanProcess):
             optional conditional tensor
         **train_args
             additional arguments to use in training
+            do not include return_history or return_configs
         """
         history = self.train(X=X, c=c, **train_args)
         self.save(path=save_path, training_configs=self.train_configs)
@@ -135,8 +146,18 @@ class WGANProcess(BaseGanProcess):
             optional conditional tensor
         **train_args:
             additional arguments for training
+            do not include return_history or return_configs
         """
-        self.train_configs = train_wgan_gp( G=self.G, D=self.D, X=X, c=c, return_configs=True, **train_args)
+        self.G_losses, self.D_losses, self.train_configs = train_wgan_gp(
+            G=self.G,
+            D=self.D,
+            X=X,
+            c=c, 
+            return_configs=True,
+            return_history=True,
+            **train_args
+            )
+        return self.G_losses, self.D_losses
 
     def train_save(self, save_path: str, X: torch.Tensor,c: torch.Tensor | None = None, **train_args):
         """
@@ -152,6 +173,7 @@ class WGANProcess(BaseGanProcess):
             optional conditional tensor
         **train_args:
             additional arguments for training
+            do not include return_history or return_configs
         """
         history = self.train(X=X, c=c, **train_args)
         self.save(path=save_path, training_configs=self.train_configs)

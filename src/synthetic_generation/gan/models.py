@@ -30,7 +30,7 @@ class ImageGenerator(nn.Module):
     def __init__(
         self,
         noise_dim: int,
-        out_dim: tuple[int,...],
+        output_dim: tuple[int,...],
         conv_in_channels: int | list[int],
         num_conv_layers: int | None = None,
         hidden_activation: ActivationFactory = nn.ReLU,
@@ -43,7 +43,7 @@ class ImageGenerator(nn.Module):
         ----------
         noise_dim : int
             number of noise dimensions to use as inputs
-        out_dim : tuple[int,...]
+        output_dim : tuple[int,...]
             size of output dimensions (C, H, W)
             note : currently only square images supported
             resize first if images are not square
@@ -62,7 +62,7 @@ class ImageGenerator(nn.Module):
         # save the init arguments
         self.init_args = {
             "noise_dim": noise_dim,
-            "out_dim": out_dim,
+            "output_dim": output_dim,
             "conv_in_channels": conv_in_channels,
             "num_conv_layers": num_conv_layers,
             "hidden_activation": hidden_activation,
@@ -71,13 +71,13 @@ class ImageGenerator(nn.Module):
         }
         self.noise_dim = noise_dim
         self.conditional_dim = conditional_dim
-        self.out_dim = out_dim
+        self.output_dim = output_dim
         if isinstance(conv_in_channels, int):
             if num_conv_layers is None:
                 raise ValueError("Number of convolutional layers must be specified when conv_channels is an int")
             # when an int is given halve the number of input channels each time
             conv_in_channels = [conv_in_channels // (2 ** n) for n in range(num_conv_layers)]
-        image_size = out_dim[-1] # size of the square that will be output
+        image_size = output_dim[-1] # size of the square that will be output
         if image_size % (2 ** len(conv_in_channels)) != 0:
             raise ValueError(
                 f"image_size {image_size} is not divisible by 2^num_conv_layers "
@@ -87,7 +87,7 @@ class ImageGenerator(nn.Module):
         initial_size = image_size // (2 ** len(conv_in_channels))
         self.initial_size = initial_size
         self.initial_channels = conv_in_channels[0]
-        image_channels = out_dim[0] #number of channels in the image
+        image_channels = output_dim[0] #number of channels in the image
         # construct the output channels
         conv_out_channels = conv_in_channels[1:] + [image_channels]
         linear_out_size = conv_in_channels[0] * initial_size ** 2
@@ -327,7 +327,7 @@ class Generator(nn.Module):
         noise_dim: int,
         num_hidden_layers: int,
         hidden_dims: HiddenDims,
-        out_dim: int | None = None,
+        output_dim: int | None = None,
         output_heads: list[OutputHead] | None = None,  
         hidden_activation: ActivationFactory = nn.LeakyReLU,
         conditional_dim: int = 0,
@@ -340,12 +340,12 @@ class Generator(nn.Module):
             dimension of noise to use as inputs
         num_hidden_layers : int
             number of linear layers between input and output layers
-        out_dim : int | None
+        output_dim : int | None
             dimension of output if no output heads specified
         output_heads : list | None
             output heads to use when specified
         hidden_dims : HiddenDims
-            either a single (in_dim, out_dim) tuple reused for all hidden layers
+            either a single (in_dim, output_dim) tuple reused for all hidden layers
             or a sequence of such tuples specifying each layer explicitly
         hidden_activation : ActivationFactory
             class used for activation after each layer other than the output layer
@@ -357,18 +357,18 @@ class Generator(nn.Module):
         self.init_args = {
             "noise_dim": noise_dim,
             "num_hidden_layers": num_hidden_layers,
-            "out_dim": out_dim,
+            "output_dim": output_dim,
             "hidden_dims": hidden_dims,
             "hidden_activation": hidden_activation,
             "output_heads": output_heads,
             "conditional_dim": conditional_dim
         }
         if output_heads is None:
-            if out_dim is None:
-                raise ValueError("Either out_dim or output_heads must be provided.")
+            if output_dim is None:
+                raise ValueError("Either output_dim or output_heads must be provided.")
             # Default: single identity head
             output_heads = [
-                OutputHead(dim=out_dim, activation=nn.Identity, name="default")
+                OutputHead(dim=output_dim, activation=nn.Identity, name="default")
             ]
         if isinstance(hidden_dims, tuple):
             hidden_dims = [hidden_dims] * num_hidden_layers
@@ -380,7 +380,7 @@ class Generator(nn.Module):
         # validate that all hidden dims are ordered pairs
         for i, h in enumerate(hidden_dims):
             if not (isinstance(h, tuple) and len(h) == 2):
-                raise ValueError(f"hidden_dims[{i} must be a tuple (in_dim, out_dim), got {h}]")
+                raise ValueError(f"hidden_dims[{i} must be a tuple (in_dim, output_dim), got {h}]")
         # validate that output dimension of a layer matches input dimension of next
         for i in range(len(hidden_dims) - 1):
             if hidden_dims[i][1] != hidden_dims[i + 1][0]:
@@ -389,7 +389,7 @@ class Generator(nn.Module):
                     f"!= hidden_dims[{i + 1}][0] ({hidden_dims[i + 1][0]})"
                 )
         self.noise_dim = noise_dim
-        self.output_dim = out_dim
+        self.output_dim = output_dim
         if callable(hidden_activation) and not isinstance(hidden_activation,nn.Module):
             self.activation = hidden_activation()
         else:
@@ -404,13 +404,13 @@ class Generator(nn.Module):
         for i in range(num_hidden_layers):
             self.hidden_layers.append(nn.Linear(*hidden_dims[i]))
 
-        trunk_out_dim = hidden_dims[-1][1]
+        trunk_output_dim = hidden_dims[-1][1]
         # Output heads
         self.head_layers = nn.ModuleList()
         self.head_activations = nn.ModuleList()
         self.head_decodes = nn.ModuleList()
         for head in self.output_heads:
-            self.head_layers.append(nn.Linear(trunk_out_dim,head.dim))
+            self.head_layers.append(nn.Linear(trunk_output_dim,head.dim))
             if callable(head.activation) and not isinstance(head.activation, nn.Module):
                 self.head_activations.append(head.activation())
             else:
@@ -536,7 +536,7 @@ class Discriminator(nn.Module):
         num_hidden_layers : int
             number of linear layers between input and output layers
         hidden_dims : HiddenDims
-                either a single (in_dim, out_dim) tuple reused for all hidden layers
+                either a single (in_dim, output_dim) tuple reused for all hidden layers
                 or a sequence of such tuples specifying each layer explicitly
         hidden_activation : ActivationFactory
             activation function to be used on all layers other than output layer

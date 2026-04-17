@@ -7,7 +7,7 @@ from synthetic_generation.data_utils import make_dataloader
 def test_feature_matching_changes_generator_GAN():
     X = torch.rand(64, 4)
     loader = make_dataloader(X, batch_size=64, shuffle=False)
-    G = Generator(noise_dim=2, num_hidden_layers=2, hidden_dims=(32, 32), out_dim=4)
+    G = Generator(noise_dim=2, num_hidden_layers=2, hidden_dims=(32, 32), output_dim=4)
     D = Discriminator(feature_dim=4, num_hidden_layers=2, hidden_dims=(32, 32))
 
     G_fm_1 = copy.deepcopy(G)
@@ -51,7 +51,7 @@ def test_feature_matching_changes_generator_GAN():
 def test_feature_matching_changes_generator_WGAN():
     X = torch.rand(64, 4)
     loader = make_dataloader(X, batch_size=64, shuffle=False)
-    G = Generator(noise_dim=2, num_hidden_layers=2, hidden_dims=(32, 32), out_dim=4)
+    G = Generator(noise_dim=2, num_hidden_layers=2, hidden_dims=(32, 32), output_dim=4)
     D = Discriminator(feature_dim=4, num_hidden_layers=2, hidden_dims=(32, 32))
 
     G_fm_1 = copy.deepcopy(G)

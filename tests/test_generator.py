@@ -5,7 +5,7 @@ from synthetic_generation.gan.models import Generator, OutputHead
 
 def test_generator_single_output():
     torch.manual_seed(42)
-    G = Generator(noise_dim=3, num_hidden_layers=2, hidden_dims=[(3, 8), (8, 8)], out_dim=5)
+    G = Generator(noise_dim=3, num_hidden_layers=2, hidden_dims=[(3, 8), (8, 8)], output_dim=5)
     z = torch.randn(10, 3)
     out = G(z)
     assert out.shape == (10, 5)
@@ -69,9 +69,9 @@ def test_generator_head_order_preserved():
     assert out[:, 1:2].shape == (4, 1)
     assert out[:, 2:3].shape == (4, 1)
 
-def test_generator_missing_out_dim_and_heads_raises():
+def test_generator_missing_output_dim_and_heads_raises():
     with pytest.raises(ValueError):
-        Generator(noise_dim=3, num_hidden_layers=1, hidden_dims=[(3, 4)], out_dim=None, output_heads=None)
+        Generator(noise_dim=3, num_hidden_layers=1, hidden_dims=[(3, 4)], output_dim=None, output_heads=None)
 
 def test_generator_multiple_heads_backward():
     torch.manual_seed(0)
@@ -108,7 +108,7 @@ def test_generator_generate_samples_uses_decode():
     assert ((0 <= samples[:, 5:6]) & (samples[:, 5:6] <= 1)).all()
 
 def test_generate_samples_restores_training_mode():
-    G = Generator(noise_dim=4, num_hidden_layers=1, hidden_dims=[(4, 8)],out_dim=3)
+    G = Generator(noise_dim=4, num_hidden_layers=1, hidden_dims=[(4, 8)],output_dim=3)
     G.train()
     assert G.training is True
 
@@ -117,7 +117,7 @@ def test_generate_samples_restores_training_mode():
     assert G.training is True
 
 def test_generate_samples_restores_eval_mode():
-    G = Generator(noise_dim=4, num_hidden_layers=1, hidden_dims=[(4, 8)],out_dim=3)
+    G = Generator(noise_dim=4, num_hidden_layers=1, hidden_dims=[(4, 8)],output_dim=3)
     G.eval()
     assert G.training is False
 

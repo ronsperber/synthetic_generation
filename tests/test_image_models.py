@@ -10,7 +10,7 @@ from synthetic_generation.gan.models import ImageGenerator, ImageDiscriminator
 
 def test_image_generator_basic_forward():
     torch.manual_seed(0)
-    G = ImageGenerator(noise_dim=16, out_dim=(1, 8, 8), conv_in_channels=[64, 32])
+    G = ImageGenerator(noise_dim=16, output_dim=(1, 8, 8), conv_in_channels=[64, 32])
     z = torch.randn(4, 16)
     out = G(z)
     assert out.shape == (4, 1, 8, 8)
@@ -19,7 +19,7 @@ def test_image_generator_basic_forward():
 
 def test_image_generator_multichannel_output():
     torch.manual_seed(0)
-    G = ImageGenerator(noise_dim=16, out_dim=(3, 8, 8), conv_in_channels=[64, 32])
+    G = ImageGenerator(noise_dim=16, output_dim=(3, 8, 8), conv_in_channels=[64, 32])
     z = torch.randn(5, 16)
     out = G(z)
     assert out.shape == (5, 3, 8, 8)
@@ -28,7 +28,7 @@ def test_image_generator_multichannel_output():
 def test_image_generator_int_channels_with_num_layers():
     torch.manual_seed(0)
     # conv_in_channels=64 with num_conv_layers=2 → [64, 32]
-    G = ImageGenerator(noise_dim=16, out_dim=(1, 8, 8), conv_in_channels=64, num_conv_layers=2)
+    G = ImageGenerator(noise_dim=16, output_dim=(1, 8, 8), conv_in_channels=64, num_conv_layers=2)
     z = torch.randn(3, 16)
     out = G(z)
     assert out.shape == (3, 1, 8, 8)
@@ -37,7 +37,7 @@ def test_image_generator_int_channels_with_num_layers():
 def test_image_generator_output_activation_tanh():
     torch.manual_seed(0)
     G = ImageGenerator(
-        noise_dim=16, out_dim=(1, 8, 8),
+        noise_dim=16, output_dim=(1, 8, 8),
         conv_in_channels=[64, 32],
         output_activation=nn.Tanh,
     )
@@ -49,7 +49,7 @@ def test_image_generator_output_activation_tanh():
 def test_image_generator_conditional_forward():
     torch.manual_seed(0)
     G = ImageGenerator(
-        noise_dim=16, out_dim=(1, 8, 8),
+        noise_dim=16, output_dim=(1, 8, 8),
         conv_in_channels=[64, 32],
         conditional_dim=4,
     )
@@ -61,7 +61,7 @@ def test_image_generator_conditional_forward():
 
 def test_image_generator_generate():
     torch.manual_seed(0)
-    G = ImageGenerator(noise_dim=16, out_dim=(1, 8, 8), conv_in_channels=[64, 32])
+    G = ImageGenerator(noise_dim=16, output_dim=(1, 8, 8), conv_in_channels=[64, 32])
     out = G.generate(7)
     assert out.shape == (7, 1, 8, 8)
     assert torch.isfinite(out).all()
@@ -70,7 +70,7 @@ def test_image_generator_generate():
 def test_image_generator_generate_conditional():
     torch.manual_seed(0)
     G = ImageGenerator(
-        noise_dim=16, out_dim=(1, 8, 8),
+        noise_dim=16, output_dim=(1, 8, 8),
         conv_in_channels=[64, 32],
         conditional_dim=3,
     )
@@ -81,14 +81,14 @@ def test_image_generator_generate_conditional():
 
 def test_image_generator_generate_samples_shape():
     torch.manual_seed(0)
-    G = ImageGenerator(noise_dim=16, out_dim=(1, 8, 8), conv_in_channels=[64, 32])
+    G = ImageGenerator(noise_dim=16, output_dim=(1, 8, 8), conv_in_channels=[64, 32])
     out = G.generate_samples(5)
     assert out.shape == (5, 1, 8, 8)
     assert out.device.type == "cpu"
 
 
 def test_image_generator_generate_samples_restores_train_mode():
-    G = ImageGenerator(noise_dim=16, out_dim=(1, 8, 8), conv_in_channels=[64, 32])
+    G = ImageGenerator(noise_dim=16, output_dim=(1, 8, 8), conv_in_channels=[64, 32])
     G.train()
     assert G.training is True
     G.generate_samples(3)
@@ -96,7 +96,7 @@ def test_image_generator_generate_samples_restores_train_mode():
 
 
 def test_image_generator_generate_samples_restores_eval_mode():
-    G = ImageGenerator(noise_dim=16, out_dim=(1, 8, 8), conv_in_channels=[64, 32])
+    G = ImageGenerator(noise_dim=16, output_dim=(1, 8, 8), conv_in_channels=[64, 32])
     G.eval()
     assert G.training is False
     G.generate_samples(3)
@@ -105,7 +105,7 @@ def test_image_generator_generate_samples_restores_eval_mode():
 
 def test_image_generator_backward():
     torch.manual_seed(0)
-    G = ImageGenerator(noise_dim=16, out_dim=(1, 8, 8), conv_in_channels=[64, 32])
+    G = ImageGenerator(noise_dim=16, output_dim=(1, 8, 8), conv_in_channels=[64, 32])
     z = torch.randn(4, 16)
     loss = G(z).mean()
     loss.backward()
@@ -115,18 +115,18 @@ def test_image_generator_backward():
 
 def test_image_generator_missing_num_conv_layers_raises():
     with pytest.raises(ValueError, match="Number of convolutional layers"):
-        ImageGenerator(noise_dim=16, out_dim=(1, 8, 8), conv_in_channels=64)
+        ImageGenerator(noise_dim=16, output_dim=(1, 8, 8), conv_in_channels=64)
 
 
 def test_image_generator_indivisible_image_size_raises():
     # 7 is not divisible by 2^2 = 4
     with pytest.raises(ValueError, match="not divisible"):
-        ImageGenerator(noise_dim=16, out_dim=(1, 7, 7), conv_in_channels=[64, 32])
+        ImageGenerator(noise_dim=16, output_dim=(1, 7, 7), conv_in_channels=[64, 32])
 
 
 def test_image_generator_missing_conditional_raises():
     G = ImageGenerator(
-        noise_dim=16, out_dim=(1, 8, 8),
+        noise_dim=16, output_dim=(1, 8, 8),
         conv_in_channels=[64, 32],
         conditional_dim=3,
     )
@@ -137,7 +137,7 @@ def test_image_generator_missing_conditional_raises():
 
 def test_image_generator_conditional_length_mismatch_raises():
     G = ImageGenerator(
-        noise_dim=16, out_dim=(1, 8, 8),
+        noise_dim=16, output_dim=(1, 8, 8),
         conv_in_channels=[64, 32],
         conditional_dim=3,
     )

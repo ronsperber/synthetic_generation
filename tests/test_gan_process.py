@@ -9,7 +9,7 @@ def test_gan_process_train_save_load(tmp_path):
     c = None  # no conditional input for simplicity
 
     # --- Test GANProcess ---
-    G_gan = Generator(noise_dim=2, num_hidden_layers=1, hidden_dims=(4,4), out_dim=2)
+    G_gan = Generator(noise_dim=2, num_hidden_layers=1, hidden_dims=(4,4), output_dim=2)
     D_gan = Discriminator(feature_dim=2, num_hidden_layers=1, hidden_dims=(4,4))
     gan_process = GANProcess(G_gan, D_gan)
 
@@ -36,7 +36,7 @@ def test_gan_process_train_save_load(tmp_path):
     assert all(torch.allclose(p0, p1) for p0, p1 in zip(D_gan_params, loaded_gan.D.parameters()))
 
     # --- Test WGANProcess ---
-    G_wgan = Generator(noise_dim=2, num_hidden_layers=1, hidden_dims=(4,4), out_dim=2)
+    G_wgan = Generator(noise_dim=2, num_hidden_layers=1, hidden_dims=(4,4), output_dim=2)
     D_wgan = Discriminator(feature_dim=2, num_hidden_layers=1, hidden_dims=(4,4))
     wgan_process = WGANProcess(G_wgan, D_wgan)
 
