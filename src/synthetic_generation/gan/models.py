@@ -31,7 +31,7 @@ class ImageGenerator(nn.Module):
         self,
         noise_dim: int,
         out_dim: tuple[int,...],
-        conv_channels: int | list[int],
+        conv_in_channels: int | list[int],
         num_conv_layers: int | None = None,
         hidden_activation: ActivationFactory = nn.ReLU,
         output_activation: ActivationFactory = nn.Tanh,
@@ -47,7 +47,7 @@ class ImageGenerator(nn.Module):
             size of output dimensions (C, H, W)
             note : currently only square images supported
             resize first if images are not square
-        conv_channels : int | list[int]
+        conv_in_channels : int | list[int]
             number of input convolutional channels for first layer or for all layers when a list
         num_conv_layers : int
             when conv_channels is an int, the number of layers must be specified
@@ -59,33 +59,43 @@ class ImageGenerator(nn.Module):
             when not 0, the dimension of the conditional 
         """
         super().__init__()
+        # save the init arguments
+        self.init_args = {
+            "noise_dim": noise_dim,
+            "out_dim": out_dim,
+            "conv_in_channels": conv_in_channels,
+            "num_conv_layers": num_conv_layers,
+            "hidden_activation": hidden_activation,
+            "output_activation": output_activation,
+            "conditional_dim": conditional_dim,
+        }
         self.noise_dim = noise_dim
         self.conditional_dim = conditional_dim
         self.out_dim = out_dim
-        if isinstance(conv_channels, int):
+        if isinstance(conv_in_channels, int):
             if num_conv_layers is None:
                 raise ValueError("Number of convolutional layers must be specified when conv_channels is an int")
             # when an int is given halve the number of input channels each time
-            conv_channels = [conv_channels // (2 ** n) for n in range(num_conv_layers)]
+            conv_in_channels = [conv_in_channels // (2 ** n) for n in range(num_conv_layers)]
         image_size = out_dim[-1] # size of the square that will be output
-        if image_size % (2 ** len(conv_channels)) != 0:
+        if image_size % (2 ** len(conv_in_channels)) != 0:
             raise ValueError(
                 f"image_size {image_size} is not divisible by 2^num_conv_layers "
-                f"(2^{len(conv_channels)}={2 ** len(conv_channels)}). "
+                f"(2^{len(conv_in_channels)}={2 ** len(conv_in_channels)}). "
                 f"e.g. use num_conv_layers=2 for 28x28 images."
                 )
-        initial_size = image_size // (2 ** len(conv_channels))
+        initial_size = image_size // (2 ** len(conv_in_channels))
         self.initial_size = initial_size
-        self.initial_channels = conv_channels[0]
+        self.initial_channels = conv_in_channels[0]
         image_channels = out_dim[0] #number of channels in the image
         # construct the output channels
-        conv_out_channels = conv_channels[1:] + [image_channels]
-        linear_out_size = conv_channels[0] * initial_size ** 2
+        conv_out_channels = conv_in_channels[1:] + [image_channels]
+        linear_out_size = conv_in_channels[0] * initial_size ** 2
         self.input_layer = nn.Linear(noise_dim + conditional_dim, linear_out_size)
         self.bn_1 = nn.BatchNorm1d(linear_out_size)
         self.conv_layers = nn.ModuleList()
         self.bn_2d = nn.ModuleList()
-        for i, in_channels in enumerate(conv_channels):
+        for i, in_channels in enumerate(conv_in_channels):
             self.conv_layers.append(
                 nn.ConvTranspose2d(
                     in_channels=in_channels,
@@ -192,6 +202,119 @@ class ImageGenerator(nn.Module):
         return output.cpu()
 
 
+class ImageDiscriminator(nn.Module):
+    """
+    class for Discriminator for images in GAN/WGAN-GP
+    """
+
+    def __init__(
+        self,
+        feature_dim: tuple[int,...],
+        conv_out_channels : int | list[int],
+        num_conv_layers: int | None = None,
+        hidden_activation: ActivationFactory = nn.LeakyReLU,
+        use_sigmoid: bool = False,
+        conditional_dim: int = 0,
+        ):
+        """
+        initialization of ImageDiscriminator class
+        Parameters
+        ----------
+        feature_dim: tuple[int,...],
+            the dimensions of the image (C, H, W)
+            note: currently only square images are supported
+            resize images first if not square
+        conv_out_channels : int | list[int]
+            number of output convolutional channels for first layer or for all layers when a list
+        num_conv_layers : int
+            when conv_channels is an int, the number of layers must be specified
+        hidden_activation : ActivationFactory
+            activation used before output layer
+        use_sigmoid: bool
+            whether or not we use a sigmoid activation or not
+            this determines the correct BCE Loss to use
+        conditional_dim: int
+            dimension of conditional used (if any)
+        """
+        super().__init__()
+        # save init arguments:
+        self.init_args = {
+            "feature_dim": feature_dim,
+            "conv_out_channels": conv_out_channels,
+            "num_conv_layers": num_conv_layers,
+            "hidden_activation": hidden_activation,
+            "use_sigmoid": use_sigmoid,
+            "conditional_dim": conditional_dim,
+        }
+        self.feature_dim = feature_dim
+        self.conditional_dim = conditional_dim
+        if isinstance(conv_out_channels, int):
+            if num_conv_layers is None:
+                raise ValueError("Number of convolutional layers must be specified when conv_channels is an int")
+            # when an int is given halve the number of input channels each time
+            conv_out_channels = [conv_out_channels * (2 ** n) for n in range(num_conv_layers)]
+        self.image_size = feature_dim[-1]
+        self.image_channels = feature_dim[0]
+        conv_in_channels = [self.image_channels] + conv_out_channels[:-1]
+        self.final_channels = conv_out_channels[-1]
+        final_size = self.final_channels * (self.image_size // 2**len(conv_out_channels))**2
+        if final_size < 1:
+            raise ValueError(
+                 f"Too many conv layers ({len(conv_out_channels)}) for image_size {self.image_size}. "
+                 f"Reduce num_conv_layers."
+                 )
+        self.conv_layers = nn.ModuleList()
+        self.bn_layers = nn.ModuleList()
+        self.linear_layer = nn.Linear(final_size + self.conditional_dim, 1)
+        for i, in_channels in enumerate(conv_in_channels):
+            self.conv_layers.append(
+                nn.Conv2d(
+                    in_channels=in_channels,
+                    out_channels=conv_out_channels[i],
+                    kernel_size=4,
+                    stride=2,
+                    padding=1)
+                    )
+        for out_channels in conv_out_channels[1:]:
+            self.bn_layers.append(nn.BatchNorm2d(out_channels))
+        if callable(hidden_activation) and not isinstance(hidden_activation,nn.Module):
+            self.activation = hidden_activation()
+        else:
+            self.activation = hidden_activation
+        if use_sigmoid:
+            self.output_activation = nn.Sigmoid()
+        else:
+            self.output_activation = nn.Identity()
+    
+    def forward(
+        self,
+        x: torch.Tensor,
+        c: torch.Tensor | None = None,
+        return_features: bool = False,
+    ) -> torch.Tensor:
+        B = x.size(0)
+        if c is not None:
+            if c.size(0) != B:
+                raise ValueError("Batch size of conditional must match batch size of input")
+        if self.conditional_dim > 0 and c is None:
+                raise ValueError("Conditional must be present when conditional_dim > 0")
+        x = self.conv_layers[0](x)
+        x = self.activation(x)
+        for conv, bn in zip(self.conv_layers[1:], self.bn_layers):
+            x = conv(x)
+            x = bn(x)
+            x = self.activation(x)
+        x = x.view(B, -1)
+        features = x
+        if c is not None:
+            x = torch.cat([x, c], dim=1)
+        final = self.output_activation(self.linear_layer(x))
+        if return_features:
+            return final, features
+        return final
+
+        
+        
 
 
 class Generator(nn.Module):
