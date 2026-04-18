@@ -265,7 +265,8 @@ class ImageDiscriminator(nn.Module):
                  )
         self.conv_layers = nn.ModuleList()
         self.bn_layers = nn.ModuleList()
-        self.linear_layer = nn.Linear(final_size + self.conditional_dim, 1)
+        self.linear_layer = nn.Linear(final_size , 1)
+        self.label_proj = nn.Linear(conditional_dim, final_size)
         for i, in_channels in enumerate(conv_in_channels):
             self.conv_layers.append(
                 nn.Conv2d(
@@ -305,13 +306,16 @@ class ImageDiscriminator(nn.Module):
             x = bn(x)
             x = self.activation(x)
         x = x.view(B, -1)
-        if c is not None:
-            x = torch.cat([x, c], dim=1)
         features = x
-        final = self.output_activation(self.linear_layer(x))
+        out = self.linear_layer(x)
+        if c is not None:
+            c_embed = self.label_proj(c)   # (B, feature_dim)
+            proj = (x * c_embed).sum(dim=1, keepdim=True)
+            out = out + proj
+        out = self.output_activation(out)
         if return_features:
-            return final, features
-        return final
+            return out, features
+        return out
 
         
         
