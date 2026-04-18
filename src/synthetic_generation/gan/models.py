@@ -264,9 +264,9 @@ class ImageDiscriminator(nn.Module):
                  f"Reduce num_conv_layers."
                  )
         self.conv_layers = nn.ModuleList()
-        self.bn_layers = nn.ModuleList()
         self.linear_layer = nn.Linear(final_size , 1)
-        self.label_proj = nn.Linear(conditional_dim, final_size)
+        if conditional_dim > 0:
+            self.label_proj = nn.Linear(conditional_dim, final_size)
         for i, in_channels in enumerate(conv_in_channels):
             self.conv_layers.append(
                 nn.Conv2d(
@@ -276,8 +276,6 @@ class ImageDiscriminator(nn.Module):
                     stride=2,
                     padding=1)
                     )
-        for out_channels in conv_out_channels[1:]:
-            self.bn_layers.append(nn.BatchNorm2d(out_channels))
         if callable(hidden_activation) and not isinstance(hidden_activation,nn.Module):
             self.activation = hidden_activation()
         else:
@@ -299,11 +297,8 @@ class ImageDiscriminator(nn.Module):
                 raise ValueError("Batch size of conditional must match batch size of input")
         if self.conditional_dim > 0 and c is None:
                 raise ValueError("Conditional must be present when conditional_dim > 0")
-        x = self.conv_layers[0](x)
-        x = self.activation(x)
-        for conv, bn in zip(self.conv_layers[1:], self.bn_layers):
+        for conv in self.conv_layers:
             x = conv(x)
-            x = bn(x)
             x = self.activation(x)
         x = x.view(B, -1)
         features = x
