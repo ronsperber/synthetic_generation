@@ -29,6 +29,8 @@ def train_gan(
     return_history: bool = False,
     return_configs: bool = False,
     epoch_callback: Callable[[dict], bool] | None = None,
+    logging_callback: Callable[[dict], bool] | None = None,
+    log_every: int = 10,
     callback_every: int = 1,
 ):
     """
@@ -71,8 +73,14 @@ def train_gan(
         receives a state dict with keys: epoch, g_loss, d_loss, G, D,
         g_loss_history, d_loss_history.
         return True to stop training early, False to continue.
+    logging_callback : Callable[[dict], bool] | None
+        optional callback hook to log something from the state
+        note, it won't return anything so any logging must be done within the
+        function
+    log_every : int
+        how often to call the logging callable
     callback_every : int
-        how often to call epoch_callback (default 1 = every epoch)
+        how often to call epoch_callback (default 1 = every 
     """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     G.to(device)
@@ -89,7 +97,7 @@ def train_gan(
         "batch_size": batch_size,
         "epochs": epochs
     }
-    track_history = return_history or (epoch_callback is not None)
+    track_history = return_history or (epoch_callback is not None) or (logging_callback is not None)
     if track_history:
         G_losses = []
         D_losses = []
@@ -193,19 +201,22 @@ def train_gan(
         if track_history:
             D_losses.append((epoch, np.mean(epoch_d_losses)))
             G_losses.append((epoch, np.mean(epoch_g_losses)))
-        if epoch_callback is not None and epoch % callback_every == 0:
-            callback_state = {
-                "epoch": epoch,
-                "G": G,
-                "D": D,
-                "g_loss": np.mean(epoch_g_losses),
-                "d_loss": np.mean(epoch_d_losses),
-                "G_history": G_losses if track_history else None,
-                "D_history": D_losses if track_history else None,
+        
+        callback_state = {
+            "epoch": epoch,
+            "G": G,
+            "D": D,
+            "g_loss": np.mean(epoch_g_losses),
+            "d_loss": np.mean(epoch_d_losses),
+            "G_history": G_losses if track_history else None,
+            "D_history": D_losses if track_history else None,
             }
+        if epoch_callback is not None and epoch % callback_every == 0:
             should_stop = epoch_callback(callback_state)
             if should_stop:
                 break
+        if logging_callback is not None and epoch % log_every == 0:
+            logging_callback(callback_state)
         pbar.set_postfix(
             {"D": f"{np.mean(epoch_d_losses):.4f}", "G": f"{np.mean(epoch_g_losses):.4f}"}
 
@@ -237,6 +248,8 @@ def train_wgan_gp(
     return_history : bool = False,
     return_configs: bool = False,
     epoch_callback: Callable[[dict], bool] | None = None,
+    logging_callback: Callable[[dict], None] | None = None,
+    log_every: int = 10,
     callback_every: int = 1,
 ):
     """
@@ -278,6 +291,12 @@ def train_wgan_gp(
         receives a state dict with keys: epoch, g_loss, d_loss, G, D,
         g_loss_history, d_loss_history.
         return True to stop training early, False to continue.
+    logging_callback : Callable[[dict], bool] | None
+        optional callback hook to log something from the state
+        note, it won't return anything so any logging must be done within the
+        function
+    log_every : int
+        how often to call the logging callable
     callback_every : int
         how often to call epoch_callback (default 1 = every epoch)
     """
@@ -297,7 +316,7 @@ def train_wgan_gp(
         "n_critic": n_critic,
         "lambda_gp": lambda_gp
     }
-    track_history = return_history or (epoch_callback is not None)
+    track_history = return_history or (epoch_callback is not None) or (logging_callback is not None)
     if track_history:
         G_losses = []
         D_losses = []
@@ -386,19 +405,22 @@ def train_wgan_gp(
         if track_history:
             D_losses.append((epoch, np.mean(epoch_d_losses)))
             G_losses.append((epoch, np.mean(epoch_g_losses)))
+        
+        callback_state = {
+            "epoch": epoch,
+            "G": G,
+            "D": D,
+            "g_loss": np.mean(epoch_g_losses),
+            "d_loss": np.mean(epoch_d_losses),
+            "G_history": G_losses if track_history else None,
+            "D_history": D_losses if track_history else None,
+        }
         if epoch_callback is not None and epoch % callback_every == 0:
-            callback_state = {
-                "epoch": epoch,
-                "G": G,
-                "D": D,
-                "g_loss": np.mean(epoch_g_losses),
-                "d_loss": np.mean(epoch_d_losses),
-                "G_history": G_losses if track_history else None,
-                "D_history": D_losses if track_history else None,
-            }
             should_stop = epoch_callback(callback_state)
             if should_stop:
                 break
+        if logging_callback is not None and epoch % log_every == 0:
+            logging_callback(callback_state)
         pbar.set_postfix(
             {"D": f"{np.mean(epoch_d_losses):.4f}", "G": f"{np.mean(epoch_g_losses):.4f}"}
         )
