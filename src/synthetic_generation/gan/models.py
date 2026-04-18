@@ -305,9 +305,9 @@ class ImageDiscriminator(nn.Module):
             x = bn(x)
             x = self.activation(x)
         x = x.view(B, -1)
-        features = x
         if c is not None:
             x = torch.cat([x, c], dim=1)
+        features = x
         final = self.output_activation(self.linear_layer(x))
         if return_features:
             return final, features

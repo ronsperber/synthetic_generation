@@ -119,7 +119,7 @@ X, labels, centers = make_blobs(
 X_train = torch.tensor(X).float()
 
 # Create models
-G = Generator(noise_dim=2, num_hidden_layers=2, hidden_dims=(128,128), out_dim=2)
+G = Generator(noise_dim=2, num_hidden_layers=2, hidden_dims=(128,128), output_dim=2)
 D = Discriminator(feature_dim=2, num_hidden_layers=2, hidden_dims=(128,128))
 
 # Create GAN process
@@ -146,7 +146,7 @@ conditional_dim = c.shape[1]
 G_cond = Generator(
     noise_dim = 2,
     num_hidden_layers = 2,
-    out_dim = 2,
+    output_dim = 2,
     hidden_dims=(128,128),
     conditional_dim=conditional_dim
 )
@@ -257,7 +257,7 @@ import torch.nn as nn
 # Output head for scaled/tanh outputs
 heads = [OutputHead(dim=2, activation=nn.Tanh, decode=nn.Tanh, name="scaled_output")]
 
-G = Generator(noise_dim=2, num_hidden_layers=2, hidden_dims=(128,128), output_heads=heads, out_dim=2)
+G = Generator(noise_dim=2, num_hidden_layers=2, hidden_dims=(128,128), output_heads=heads, output_dim=2)
 D = Discriminator(feature_dim=2, num_hidden_layers=2, hidden_dims=(128,128))
 
 process = GANProcess(G=G, D=D)
