@@ -36,7 +36,7 @@ We systematically compared 5 generative methods on a ring of Gaussian clusters:
 
 - `src/synthetic_generation/gan/models.py`
 Fully connected Generator and Discriminator (Critic) classes, optionally conditional.
-Includes `OutputHead` for training/inference activations. The Generator exposes `.generate_samples()` to produce synthetic data easily.
+Includes `OutputHead` for training/inference activations. The Generator exposes `.generate_samples()` to produce synthetic data easily. There are also `ImageGenerator` and `ImageDiscriminator` classes that have the same exposed attributes and methods.
 
 - `src/synthetic_generation/gan/training.py`
 Training loops for:
@@ -300,11 +300,12 @@ X_fake = scaler.inverse_transform(X_fake_scaled.detach().cpu().numpy())
 
 ## Design Notes and Limitations
 
-  - Fully connected networks only (no convolutions)
+  - Conditional information is incorporated via feature concatenation (and/or embedded feature concatenation in diffusion) for tabular methods
 
-  - Conditional information is incorporated via feature concatenation (and/or embedded feature concatenation in diffusion)
+  - For image generation, the conditional information is incorporated similarly to how it's done for tabular, but
+  for the discriminator, it's incorporated via a projection in the feature space.
 
-  - Primarily designed for tabular or low-dimensional data
+  - Primarily designed for tabular or low-dimensional data, with some basic image data capability
 
   - Intended for experimentation and demonstration; production use requires additional validation, monitoring, and constraints
 ### Extending DiffusionProcess with a Custom Model
@@ -318,4 +319,4 @@ To use a custom model with `DiffusionProcess`, your class should:
 This ensures `.save()` and `.load_process()` work correctly.
 ## Extensibility
 
-The framework is designed to be modular, making it straightforward to add new generative models while keeping the same unified Process API for training, sampling, and checkpointing
+The framework is designed to be modular, making it straightforward to add new generative models while keeping the same unified Process API for training, sampling, and checkpointing. In particular the GANs for images used are fairly limited, so future work could incude more sophisticated model classes.
