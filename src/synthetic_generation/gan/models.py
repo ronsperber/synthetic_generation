@@ -214,6 +214,7 @@ class ImageDiscriminator(nn.Module):
         num_conv_layers: int | None = None,
         hidden_activation: ActivationFactory = nn.LeakyReLU,
         use_sigmoid: bool = False,
+        use_batch_norm: bool = False,
         conditional_dim: int = 0,
         ):
         """
@@ -233,6 +234,8 @@ class ImageDiscriminator(nn.Module):
         use_sigmoid: bool
             whether or not we use a sigmoid activation or not
             this determines the correct BCE Loss to use
+        use_batch_norm: bool
+            whether or not to use batch norm layers
         conditional_dim: int
             dimension of conditional used (if any)
         """
@@ -244,6 +247,7 @@ class ImageDiscriminator(nn.Module):
             "num_conv_layers": num_conv_layers,
             "hidden_activation": hidden_activation,
             "use_sigmoid": use_sigmoid,
+            "use_batch_norm": use_batch_norm,
             "conditional_dim": conditional_dim,
         }
         self.feature_dim = feature_dim
@@ -267,6 +271,11 @@ class ImageDiscriminator(nn.Module):
         self.linear_layer = nn.Linear(final_size , 1)
         if conditional_dim > 0:
             self.label_proj = nn.Linear(conditional_dim, final_size)
+        self.use_batch_norm = use_batch_norm
+        if use_batch_norm:
+            self.bn_layers = nn.ModuleList()
+            for out_channels in conv_out_channels[1:]:
+                self.bn_layers.append(nn.BatchNorm2d(out_channels))
         for i, in_channels in enumerate(conv_in_channels):
             self.conv_layers.append(
                 nn.Conv2d(
@@ -297,13 +306,21 @@ class ImageDiscriminator(nn.Module):
                 raise ValueError("Batch size of conditional must match batch size of input")
         if self.conditional_dim > 0 and c is None:
                 raise ValueError("Conditional must be present when conditional_dim > 0")
-        for conv in self.conv_layers:
-            x = conv(x)
-            x = self.activation(x)
+        x = self.conv_layers[0](x)
+        x = self.activation(x)
+        if self.use_batch_norm:
+            for conv, bn in zip(self.conv_layers[1:], self.bn_layers):
+                x = conv(x)
+                x = bn(x)
+                x = self.activation(x)
+        else:
+            for conv in self.conv_layers[1:]:
+                x = conv(x)
+                x = self.activation(x)
         x = x.view(B, -1)
         features = x
         out = self.linear_layer(x)
-        if c is not None:
+        if c is not None and self.conditional_dim > 0:
             c_embed = self.label_proj(c)   # (B, feature_dim)
             proj = (x * c_embed).sum(dim=1, keepdim=True)
             out = out + proj
