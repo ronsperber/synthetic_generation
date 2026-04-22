@@ -3,11 +3,57 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
+requires-python = ">=3.11"
 name = "synthetic-generation"
 version = "0.1.0"
 description = "Synthetic data generation utilities (GANs, diffusion, etc.)"
-dependencies = ["torch", "numpy", "tqdm", "torchvision"]
+dependencies = [
+    "numpy",
+    "tqdm",
+    "matplotlib",
+    "joblib",
+    "pandas",
+    "ipykernel",
+    "Ipython",
+    "copulas",
+    "copulae",
+    "scikit-learn",
+    "scipy",
+    "statsmodels"
+    ]
+[project.optional-dependencies]
+dev = ["pytest", "ipykernel"]
+cpu = ["torch", "torchvision"]
+gpu = ["torch", "torchvision"]
 
+
+
+[tool.uv]
+conflicts = [
+  [
+    { extra = "cpu" },
+    { extra = "gpu" },
+  ],
+]
+
+[tool.uv.sources]
+torch = [
+  { index = "pytorch-cpu", marker = "extra == 'cpu'" },
+  { index = "pytorch-gpu", marker = "extra != 'cpu' and extra == 'gpu'" },
+]
+torchvision = [
+  { index = "pytorch-cpu", marker = "extra == 'cpu'" },
+  { index = "pytorch-gpu", marker = "extra != 'cpu' and extra == 'gpu'" },
+]
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-gpu"
+url = "https://download.pytorch.org/whl/cu121"
+explicit = true
 [tool.setuptools.packages.find]
 where = ["src"]
 
