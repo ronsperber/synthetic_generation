@@ -99,7 +99,19 @@ cd synthetic_generation
 pip install -r requirements.txt
 pip install -e .
 ```
+If you are using UV, you can use 
+```bash
+uv sync --extra cpu
+```
+on a CPU machine or
+```bash
+uv sync --extra gpu
+```
+on a machine with a GPU
 
+Note: The GPU build is configured for CUDA 12.1. If you have a different CUDA version, 
+update the `pytorch-gpu` index URL in `pyproject.toml` accordingly 
+(e.g., `cu118`, `cu124`). Check your CUDA version with `nvcc --version`.
 ## Example Usage
 ### GANs
 
