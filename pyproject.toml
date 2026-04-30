@@ -19,8 +19,9 @@ dependencies = [
     "copulae",
     "scikit-learn",
     "scipy",
-    "statsmodels"
-    ]
+    "statsmodels",
+    "optuna>=4.8.0",
+]
 [project.optional-dependencies]
 dev = ["pytest", "ipykernel"]
 cpu = ["torch", "torchvision"]
