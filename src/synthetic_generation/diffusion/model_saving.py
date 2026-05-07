@@ -1,5 +1,6 @@
 import torch
-from typing import TYPE_CHECKING
+import torch.nn as nn
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from .process import DiffusionProcess
@@ -51,7 +52,7 @@ def save_diffusion_checkpoint(process:"DiffusionProcess", path: str, train_confi
     if hasattr(model.time_embedding, "init_args"):
         config["time_embedding"] = {
             "class_name": type(model.time_embedding).__name__,
-            "init_args": model.time_embedding.init_args
+            "init_args": model.time_embedding.init_args #type: ignore
         }
     elif isinstance(model.time_embedding, torch.nn.Module):
         config["time_embedding"] = {
@@ -91,7 +92,7 @@ def save_diffusion_checkpoint(process:"DiffusionProcess", path: str, train_confi
     torch.save(checkpoint, path)
 
 
-def load_diffusion_checkpoint(path: str, model_classes: dict = None, activation_dict: dict | None = None):
+def load_diffusion_checkpoint(path: str, model_classes: dict[str, type[nn.Module]] | None = None, activation_dict: dict | None = None):
     """
     Load a DiffusionProcess checkpoint.
     Parameters
@@ -109,7 +110,7 @@ def load_diffusion_checkpoint(path: str, model_classes: dict = None, activation_
     # and add the optional ones passed
     model_classes = BASE_MODEL_CLASSES | (model_classes or {})
     activation_dict = BASE_ACTIVATIONS | (activation_dict or {})
-    checkpoint = torch.load(path, map_location="cpu")
+    checkpoint:dict[str,Any] = torch.load(path, map_location="cpu")
     config = checkpoint["config"]
 
     # Rebuild time_embedding
@@ -120,7 +121,9 @@ def load_diffusion_checkpoint(path: str, model_classes: dict = None, activation_
         if te_class_name in model_classes:
             te_class = model_classes[te_class_name]
         else:
-            te_class = globals()[te_class_name]  # assumes it's imported
+            raise ValueError(
+                 f"Unknown class '{te_class_name}'. Pass it via the model_classes argument."
+                 )
         time_embedding = te_class(**te_args)
 
     # Rebuild conditional embedding
@@ -138,14 +141,16 @@ def load_diffusion_checkpoint(path: str, model_classes: dict = None, activation_
         if class_name in model_classes:
             cls = model_classes[class_name]
         else:
-            cls = globals()[class_name]
+            raise ValueError(f"Unknown class '{class_name}'. Pass it via the model_classes argument.")
         conditional_embedding = cls(**init_args)
 
     # Rebuild model
     if config["class_name"] in model_classes:
         model_cls = model_classes[config["class_name"]]
     else:
-        model_cls = globals()[config["class_name"]]
+        raise ValueError(
+            f"Unknown class '{config["class_name"]}'. Pass it via the model_classes argument"
+        )
     if config["activation"] in activation_dict:
         activation = activation_dict[config["activation"]]
     else:

@@ -1,7 +1,7 @@
 """
 module with model classes to use for diffusion
 """
-from typing import Sequence, TypeAlias
+from typing import Sequence, TypeAlias, cast
 from collections.abc import Callable
 import math
 import torch
@@ -95,7 +95,7 @@ class BaseMLP(nn.Module):
         else:
             self.activation = activation
         if isinstance(hidden_dims, tuple):
-            hidden_dims = [hidden_dims] * max(1, num_hidden_layers)
+            hidden_dims = [cast(LayerDims, hidden_dims)] * max(1, num_hidden_layers)
         self.hidden_dims = hidden_dims
         self.num_hidden_layers = num_hidden_layers
         # validate hidden layer dimensions when there are hidden layers
@@ -251,9 +251,9 @@ class DiffusionNet(BaseMLP):
         time_embedding = time_embedding or MLPTimeEmbedding()
         # make sure the embedding has an embedding_dim attribute needed to know dimension of time embedding
         if  hasattr(time_embedding, 'embedding_dim'):
-            self.time_embedding_dim = time_embedding.embedding_dim
+            self.time_embedding_dim = cast(int, time_embedding.embedding_dim)
         elif time_embedding_dim is not None:
-            self.time_embedding_dim = time_embedding_dim
+            self.time_embedding_dim = int(time_embedding_dim)
         else:
             raise AttributeError(
                 f"Time embedding {type(time_embedding).__name__} must have 'embedding_dim' attribute "
@@ -312,7 +312,8 @@ class DiffusionNet(BaseMLP):
                 raise ValueError("Conditional dimension is > 0 , but no conditional was passed")
             if c.shape[0] != x_t.shape[0]:
                 raise ValueError("Conditional tensor must have same batch size as x_t")
-            c = self.conditional_embedding(c)
+            assert self.conditional_embedding is not None
+            c = cast(torch.Tensor, self.conditional_embedding(c))
             x = torch.cat([x_t, t_embed, c], dim=1)
         else:
             x = torch.cat([x_t, t_embed], dim=1)
